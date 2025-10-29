@@ -2,7 +2,7 @@
 
 client_id = "c4b43eb51d6318e8af3400b6b5a7a264"
 name = "All-in-one Promotions"
-application_url = "https://all-in-one-promotions-4ellnrh1n-vibodhs-projects.vercel.app"
+application_url = "https://all-in-one-promotions.onrender.com"
 embedded = true
 
 [webhooks]
@@ -32,8 +32,8 @@ use_legacy_install_flow = false
 
 [auth]
 redirect_urls = [
-  "https://all-in-one-promotions-4ellnrh1n-vibodhs-projects.vercel.app/auth/callback",
-  "https://all-in-one-promotions-4ellnrh1n-vibodhs-projects.vercel.app/auth/shopify/callback"
+  "https://all-in-one-promotions.onrender.com/auth/callback",
+  "https://all-in-one-promotions.onrender.com/auth/shopify/callback"
 ]
 
 [pos]
