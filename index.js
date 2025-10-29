@@ -7,6 +7,7 @@ import analyticsRoutes from './routes/analytics.js';
 import billingRoutes from './routes/billing.js';
 import webhookRoutes from './routes/webhooks.js';
 import dotenv from 'dotenv';
+import path from "path";
 
 dotenv.config();
 
@@ -62,8 +63,14 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.get('/', (req, res) => {
-    res.send('✅ Shopify app is running successfully!');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const frontendPath = path.join(__dirname, 'frontend', 'dist'); // or 'build' if React
+app.use(express.static(frontendPath));
+
+// Catch-all to serve index.html (so React/Vite routes work)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // Start server
