@@ -105,8 +105,5 @@ async function createBillingCharge(session) {
   await billing.createCharge(session);
 }
 
-module.exports = {
-  createShopifyAuth,
-  verifyRequest,
-  verifyWebhook
-};
+
+export { createShopifyAuth, verifyRequest, verifyWebhook };

@@ -1,7 +1,7 @@
 // index.js (ESM)
 import express from 'express';
 import { Shopify } from '@shopify/shopify-api';
-import createShopifyAuth from './middleware/auth.js';
+import { createShopifyAuth } from './middleware/auth.js';
 import offerRoutes from './routes/offers.js';
 import analyticsRoutes from './routes/analytics.js';
 import billingRoutes from './routes/billing.js';

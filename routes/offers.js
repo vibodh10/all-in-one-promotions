@@ -359,4 +359,4 @@ function generateOfferPreview(offer) {
   `;
 }
 
-module.exports = router;
+export default router;

@@ -314,4 +314,4 @@ async function canCreateOffer(shopId) {
 
 module.exports = router;
 module.exports.canCreateOffer = canCreateOffer;
-module.exports.BILLING_PLANS = BILLING_PLANS;
+export default BILLING_PLANS;

@@ -256,5 +256,4 @@ async function registerWebhooks(session) {
   }
 }
 
-module.exports = router;
-module.exports.registerWebhooks = registerWebhooks;
+export default router;
