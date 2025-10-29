@@ -1,6 +1,9 @@
 require('dotenv').config();
 const express = require('express');
 const { Shopify } = require('@shopify/shopify-api');
+console.log('Shopify package:', Shopify);
+console.log('Shopify version:', require('@shopify/shopify-api/package.json').version);
+process.exit();
 const { createShopifyAuth } = require('./middleware/auth');
 const offerRoutes = require('./routes/offers');
 const analyticsRoutes = require('./routes/analytics');
