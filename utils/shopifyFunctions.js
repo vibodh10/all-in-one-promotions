@@ -306,7 +306,7 @@ async function applyCheckoutDiscount(session, offer, cartItems) {
   }
 }
 
-module.exports = {
+export {
   createDiscount,
   updateDiscount,
   deleteDiscount,
