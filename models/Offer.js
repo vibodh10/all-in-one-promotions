@@ -283,4 +283,4 @@ class Offer {
   }
 }
 
-module.exports = Offer;
+export default Offer;
