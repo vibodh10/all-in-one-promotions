@@ -1,31 +1,29 @@
-require('dotenv').config();
-const express = require('express');
-const { Shopify } = require('@shopify/shopify-api');
-console.log('Shopify package:', Shopify);
-console.log('Shopify version:', require('@shopify/shopify-api/package.json').version);
-process.exit();
-const { createShopifyAuth } = require('./middleware/auth');
-const offerRoutes = require('./routes/offers');
-const analyticsRoutes = require('./routes/analytics');
-const billingRoutes = require('./routes/billing');
-const webhookRoutes = require('./routes/webhooks');
+// index.js (ESM)
+import express from 'express';
+import { Shopify } from '@shopify/shopify-api';
+import createShopifyAuth from './middleware/auth.js';
+import offerRoutes from './routes/offers.js';
+import analyticsRoutes from './routes/analytics.js';
+import billingRoutes from './routes/billing.js';
+import webhookRoutes from './routes/webhooks.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Initialize Shopify API
 Shopify.Context.initialize({
-  API_KEY: process.env.SHOPIFY_API_KEY,
-  API_SECRET_KEY: process.env.SHOPIFY_API_SECRET,
-  SCOPES: process.env.SHOPIFY_SCOPES.split(','),
-  HOST_NAME: process.env.APP_URL.replace(/https?:\/\//, ''),
-  API_VERSION: '2024-01',
-  IS_EMBEDDED_APP: true,
-  SESSION_STORAGE: new Shopify.Session.CustomSessionStorage(
-    // Implement session storage (Firebase or PostgreSQL)
-    require('./utils/sessionStorage')
-  ),
+    API_KEY: process.env.SHOPIFY_API_KEY,
+    API_SECRET_KEY: process.env.SHOPIFY_API_SECRET,
+    SCOPES: process.env.SHOPIFY_SCOPES.split(','),
+    HOST_NAME: process.env.SHOPIFY_APP_URL.replace(/^https?:\/\//, ''),
+    API_VERSION: '2024-01',
+    IS_EMBEDDED_APP: true,
+    SESSION_STORAGE: new Shopify.Session.MemorySessionStorage(),
 });
+
 
 // Middleware
 app.use(express.json());
