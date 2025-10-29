@@ -373,4 +373,4 @@ function generateCSV(events) {
   ].join('\n');
 }
 
-module.exports = router;
+export default router;
