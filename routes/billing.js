@@ -313,6 +313,5 @@ async function canCreateOffer(shopId) {
   return offers.length < maxOffers;
 }
 
-module.exports = router;
-module.exports.canCreateOffer = canCreateOffer;
-export default BILLING_PLANS;
+export default router;
+export { canCreateOffer, BILLING_PLANS };
