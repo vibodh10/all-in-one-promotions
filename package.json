@@ -13,6 +13,9 @@
     "lint": "eslint . --ext .js,.jsx",
     "prettier": "prettier --write '**/*.{js,jsx,json,md}'"
   },
+  "engines": {
+    "node": ">=18"
+  },
   "keywords": [
     "shopify",
     "app",
