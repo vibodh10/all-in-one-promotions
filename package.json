@@ -1,0 +1,44 @@
+{
+  "name": "smart-offers-bundles",
+  "version": "1.0.0",
+  "description": "Smart Offers & Bundles - Shopify App for promotional offers, bundles, and discounts",
+  "main": "index.js",
+  "scripts": {
+    "dev": "shopify app dev",
+    "build": "shopify app build",
+    "deploy": "shopify app deploy",
+    "generate": "shopify app generate",
+    "test": "jest",
+    "lint": "eslint . --ext .js,.jsx",
+    "prettier": "prettier --write '**/*.{js,jsx,json,md}'"
+  },
+  "keywords": [
+    "shopify",
+    "app",
+    "bundles",
+    "discounts",
+    "upsells",
+    "promotions"
+  ],
+  "author": "Your Company",
+  "license": "MIT",
+  "dependencies": {
+    "@shopify/app-bridge": "^3.7.0",
+    "@shopify/app-bridge-react": "^3.7.0",
+    "@shopify/polaris": "^12.0.0",
+    "@shopify/shopify-api": "^9.0.0",
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1",
+    "firebase-admin": "^12.0.0",
+    "pg": "^8.11.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@shopify/cli": "^3.50.0",
+    "eslint": "^8.50.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.0.3"
+  }
+}

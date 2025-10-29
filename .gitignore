@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Production
+/build
+/dist
+
+# Logs
+logs/
+*.log
+
+# Database
+*.sqlite
+*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+.nyc_output/
+
+# Cache
+.cache/
+.parcel-cache/
+
+# Firebase
+.firebase/
+firebase-debug.log
+
+# Misc
+.shopify/
+*.pem
+*.key
+
+# Backup files
+*.backup
+*.bak
