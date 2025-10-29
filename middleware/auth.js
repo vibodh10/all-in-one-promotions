@@ -1,4 +1,4 @@
-const { Shopify } = require('@shopify/shopify-api');
+import { Shopify } from "@shopify/shopify-api";
 
 /**
  * Shopify OAuth authentication middleware

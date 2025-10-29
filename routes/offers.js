@@ -1,9 +1,10 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { verifyRequest } = require('../middleware/auth');
-const Offer = require('../models/Offer');
-const db = require('../utils/database');
-const shopifyFunctions = require('../utils/shopifyFunctions');
+
+import { verifyRequest } from '../middleware/auth.js';
+import Offer from '../models/Offer.js';
+import db from '../utils/database.js';
+import * as shopifyFunctions from '../utils/shopifyFunctions.js';
 
 // Apply authentication to all routes
 router.use(verifyRequest);

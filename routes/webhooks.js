@@ -1,7 +1,8 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { verifyWebhook } = require('../middleware/auth');
-const db = require('../utils/database');
+
+import { verifyWebhook } from '../middleware/auth.js';
+import db from '../utils/database.js';
 
 /**
  * POST /api/webhooks/app/uninstalled

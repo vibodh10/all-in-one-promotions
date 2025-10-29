@@ -1,7 +1,8 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { verifyRequest } = require('../middleware/auth');
-const { Shopify } = require('@shopify/shopify-api');
+
+import { verifyRequest } from '../middleware/auth.js';
+import { Shopify } from '@shopify/shopify-api';
 
 // Billing plans configuration
 const BILLING_PLANS = {

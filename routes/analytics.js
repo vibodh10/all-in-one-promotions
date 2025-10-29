@@ -1,7 +1,8 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { verifyRequest } = require('../middleware/auth');
-const db = require('../utils/database');
+
+import { verifyRequest } from '../middleware/auth.js';
+import db from '../utils/database.js';
 
 // Apply authentication to all routes
 router.use(verifyRequest);
