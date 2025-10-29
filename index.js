@@ -8,6 +8,7 @@ import billingRoutes from './routes/billing.js';
 import webhookRoutes from './routes/webhooks.js';
 import dotenv from 'dotenv';
 import path from "path";
+import { fileURLToPath } from 'url';
 
 dotenv.config();
 
