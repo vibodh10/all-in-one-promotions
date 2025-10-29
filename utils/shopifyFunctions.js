@@ -3,7 +3,8 @@
  * Handles discount creation and management via Shopify Functions API
  */
 
-const { Shopify } = require('@shopify/shopify-api');
+import ShopifyPkg from '@shopify/shopify-api';
+const { Shopify } = ShopifyPkg;
 
 /**
  * Create a discount for an offer
