@@ -367,7 +367,7 @@ async function getOffersByProduct(productId) {
   }
 }
 
-export {
+const database = {
   getOffers,
   getOfferById,
   createOffer,
@@ -382,3 +382,5 @@ export {
   deleteShopData,
   getOffersByProduct
 };
+
+export default database;

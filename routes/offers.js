@@ -3,7 +3,7 @@ const router = express.Router();
 
 import { verifyRequest } from '../middleware/auth.js';
 import Offer from '../models/Offer.js';
-import db from '../utils/database.js';
+import database from '../utils/database.js';
 import * as shopifyFunctions from '../utils/shopifyFunctions.js';
 
 // Apply authentication to all routes
@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
     if (status) filters.status = status;
     if (type) filters.type = type;
 
-    const offers = await db.getOffers(filters);
+    const offers = await database.getOffers(filters);
 
     res.json({
       success: true,
@@ -47,7 +47,7 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     const shopId = req.session.shop;
 
-    const offer = await db.getOfferById(id, shopId);
+    const offer = await database.getOfferById(id, shopId);
 
     if (!offer) {
       return res.status(404).json({
@@ -93,7 +93,7 @@ router.post('/', async (req, res) => {
     }
 
     // Save to database
-    const savedOffer = await db.createOffer(offer.toJSON());
+    const savedOffer = await database.createOffer(offer.toJSON());
 
     // Create Shopify discount if offer is active
     if (savedOffer.status === 'active') {
@@ -125,7 +125,7 @@ router.put('/:id', async (req, res) => {
     const updates = req.body;
 
     // Get existing offer
-    const existingOffer = await db.getOfferById(id, shopId);
+    const existingOffer = await database.getOfferById(id, shopId);
     if (!existingOffer) {
       return res.status(404).json({
         success: false,
@@ -152,7 +152,7 @@ router.put('/:id', async (req, res) => {
     }
 
     // Save to database
-    const savedOffer = await db.updateOffer(id, offer.toJSON());
+    const savedOffer = await database.updateOffer(id, offer.toJSON());
 
     // Update Shopify discount
     await shopifyFunctions.updateDiscount(req.session, savedOffer);
@@ -180,7 +180,7 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params;
     const shopId = req.session.shop;
 
-    const offer = await db.getOfferById(id, shopId);
+    const offer = await database.getOfferById(id, shopId);
     if (!offer) {
       return res.status(404).json({
         success: false,
@@ -192,7 +192,7 @@ router.delete('/:id', async (req, res) => {
     await shopifyFunctions.deleteDiscount(req.session, offer);
 
     // Delete from database
-    await db.deleteOffer(id, shopId);
+    await database.deleteOffer(id, shopId);
 
     res.json({
       success: true,
@@ -216,7 +216,7 @@ router.post('/:id/duplicate', async (req, res) => {
     const { id } = req.params;
     const shopId = req.session.shop;
 
-    const originalOffer = await db.getOfferById(id, shopId);
+    const originalOffer = await database.getOfferById(id, shopId);
     if (!originalOffer) {
       return res.status(404).json({
         success: false,
@@ -235,7 +235,7 @@ router.post('/:id/duplicate', async (req, res) => {
     };
 
     const offer = new Offer(duplicateData);
-    const savedOffer = await db.createOffer(offer.toJSON());
+    const savedOffer = await database.createOffer(offer.toJSON());
 
     res.status(201).json({
       success: true,
@@ -269,7 +269,7 @@ router.patch('/:id/status', async (req, res) => {
       });
     }
 
-    const offer = await db.getOfferById(id, shopId);
+    const offer = await database.getOfferById(id, shopId);
     if (!offer) {
       return res.status(404).json({
         success: false,
@@ -278,7 +278,7 @@ router.patch('/:id/status', async (req, res) => {
     }
 
     // Update status
-    const updatedOffer = await db.updateOffer(id, {
+    const updatedOffer = await database.updateOffer(id, {
       ...offer,
       status,
       updatedAt: new Date()
@@ -314,7 +314,7 @@ router.get('/:id/preview', async (req, res) => {
     const { id } = req.params;
     const shopId = req.session.shop;
 
-    const offer = await db.getOfferById(id, shopId);
+    const offer = await database.getOfferById(id, shopId);
     if (!offer) {
       return res.status(404).json({
         success: false,
