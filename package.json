@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "shopify app dev",
+    "start": "node index.js",
     "build": "npx shopify app build",
     "deploy": "shopify app deploy",
     "generate": "shopify app generate",
