@@ -62,6 +62,10 @@ app.use((err, req, res, next) => {
   });
 });
 
+app.get('/', (req, res) => {
+    res.send('✅ Shopify app is running successfully!');
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Smart Offers & Bundles app running on port ${PORT}`);
