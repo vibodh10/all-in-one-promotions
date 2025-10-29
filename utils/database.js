@@ -367,7 +367,7 @@ async function getOffersByProduct(productId) {
   }
 }
 
-module.exports = {
+export {
   getOffers,
   getOfferById,
   createOffer,
