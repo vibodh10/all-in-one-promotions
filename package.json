@@ -14,7 +14,7 @@
     "prettier": "prettier --write '**/*.{js,jsx,json,md}'"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=18 <=24"
   },
   "keywords": [
     "shopify",
