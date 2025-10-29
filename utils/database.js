@@ -1,7 +1,4 @@
-/**
- * Database utility module
- * Supports both Firebase and PostgreSQL
- */
+import Pool from "pg";
 
 const USE_FIREBASE = process.env.FIREBASE_PROJECT_ID ? true : false;
 
@@ -22,8 +19,6 @@ if (USE_FIREBASE) {
   db = admin.firestore();
 } else {
   // PostgreSQL implementation
-  const { Pool } = require('pg');
-  
   db = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
