@@ -80,10 +80,9 @@ app.use((err, req, res, next) => {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const frontendPath = path.join(__dirname, 'frontend', 'dist'); // or 'build' if React
-app.use(express.static(frontendPath));
+app.use('/frontend', express.static(frontendPath));
 
-// Catch-all to serve index.html (so React/Vite routes work)
-app.get('*', (req, res) => {
+app.get('/frontend/*', (req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
