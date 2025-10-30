@@ -51,7 +51,7 @@ app.use((req, res, next) => {
         "default-src 'self'; " +
         "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
         "style-src 'self' 'unsafe-inline'; " +
-        "img-src 'self' data: https:; " +
+        "img-src 'self' data: https:; " + // <- allows favicon and other images
         "connect-src 'self' https://argus.shopifycloud.com; " +
         `frame-ancestors https://${shopOrigin} https://admin.shopify.com; ` +
         "object-src 'none'; base-uri 'self';"
