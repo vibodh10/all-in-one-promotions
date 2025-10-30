@@ -43,6 +43,14 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use((req, res, next) => {
+    res.setHeader(
+        "Content-Security-Policy",
+        `frame-ancestors https://${req.query.shop} https://admin.shopify.com;`
+    );
+    next();
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
