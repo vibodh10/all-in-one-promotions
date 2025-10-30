@@ -44,10 +44,20 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
+    const shopOrigin = req.query.shop;
+
     res.setHeader(
         "Content-Security-Policy",
-        `frame-ancestors https://${req.query.shop} https://admin.shopify.com;`
+        `default-src 'self'; 
+     script-src 'self' 'unsafe-inline' 'unsafe-eval'; 
+     style-src 'self' 'unsafe-inline'; 
+     img-src 'self' data: https:; 
+     connect-src 'self' https://argus.shopifycloud.com; 
+     frame-ancestors https://${shopOrigin} https://admin.shopify.com; 
+     object-src 'none'; 
+     base-uri 'self';`
     );
+
     next();
 });
 
