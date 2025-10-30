@@ -15,6 +15,7 @@ function App() {
         const params = new URLSearchParams(window.location.search);
         const host = params.get('host');
         const shop = params.get('shop');
+        console.log('Shopify host:', new URLSearchParams(window.location.search).get('host'));
 
         if (host && shop) {
             setConfig({
