@@ -15,6 +15,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Logging middleware
 app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
     next();
@@ -31,30 +32,33 @@ Shopify.Context.initialize({
     SESSION_STORAGE: new Shopify.Session.MemorySessionStorage(),
 });
 
-
-// Middleware
+// Body parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // CORS for Shopify embedded apps
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  next();
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    next();
 });
 
+// CSP middleware
 app.use((req, res, next) => {
     const shopOrigin = req.query.shop;
 
     res.setHeader(
         "Content-Security-Policy",
-        "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-        "style-src 'self' 'unsafe-inline'; " +
-        "img-src 'self' data: https:; " + // <- allows favicon and other images
-        "connect-src 'self' https://argus.shopifycloud.com; " +
-        `frame-ancestors https://${shopOrigin} https://admin.shopify.com; ` +
-        "object-src 'none'; base-uri 'self';"
+        [
+            "default-src 'self'",                    // allow scripts/styles/images from self by default
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: https:",          // explicitly allow images from self, data URIs, https
+            "connect-src 'self' https://argus.shopifycloud.com",
+            `frame-ancestors https://${shopOrigin} https://admin.shopify.com`,
+            "object-src 'none'",
+            "base-uri 'self'"
+        ].join('; ')
     );
 
     next();
@@ -62,43 +66,46 @@ app.use((req, res, next) => {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+    res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
 // Authentication routes
 app.get('/auth', createShopifyAuth());
 app.get('/auth/callback', createShopifyAuth());
 
-// API Routes
+// API routes
 app.use('/api/offers', offerRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/webhooks', webhookRoutes);
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(err.status || 500).json({
-    error: {
-      message: err.message || 'Internal server error',
-      status: err.status || 500
-    }
-  });
-});
-
+// Frontend static files under /frontend
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const frontendPath = path.join(__dirname, 'frontend', 'dist'); // or 'build' if React
+const frontendPath = path.join(__dirname, 'frontend', 'dist'); // Vite build
+
 app.use('/frontend', express.static(frontendPath));
 
+// Catch-all for React routes under /frontend
 app.get('/frontend/*', (req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
+// Error handler
+app.use((err, req, res, next) => {
+    console.error('Error:', err);
+    res.status(err.status || 500).json({
+        error: {
+            message: err.message || 'Internal server error',
+            status: err.status || 500
+        }
+    });
+});
+
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Smart Offers & Bundles app running on port ${PORT}`);
-  console.log(`📍 Environment: ${process.env.NODE_ENV}`);
+    console.log(`🚀 Smart Offers & Bundles app running on port ${PORT}`);
+    console.log(`📍 Environment: ${process.env.NODE_ENV}`);
 });
 
 export default app;
