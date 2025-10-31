@@ -12,13 +12,9 @@ import {
 } from '@shopify/polaris';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { AuthProvider, useAuth } from "../../../contexts/AuthContext.jsx";
 
-// ✅ Adjust this if AuthContext is missing
-// Create a dummy useAuth if you don’t have it yet
-// import { useAuth } from '../contexts/AuthContext';
-const useAuth = () => ({ session: { accessToken: '' } });
-
-function Dashboard() {
+function DashboardContent() {
     const navigate = useNavigate();
     const { session } = useAuth();
     const [loading, setLoading] = useState(true);
@@ -72,6 +68,8 @@ function Dashboard() {
         formatCurrency(offer.revenue),
         formatPercent(offer.conversionRate),
     ]);
+
+    if (!session) return <div>Loading...</div>;
 
     return (
         <Page
@@ -157,4 +155,11 @@ function Dashboard() {
     );
 }
 
-export default Dashboard;
+// Wrap DashboardContent in AuthProvider
+export default function Dashboard() {
+    return (
+        <AuthProvider>
+            <DashboardContent />
+        </AuthProvider>
+    );
+}

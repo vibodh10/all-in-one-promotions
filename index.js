@@ -90,8 +90,17 @@ app.get('/', (req, res) => {
     res.redirect('/frontend/');
 });
 
-// Catch-all for React routes under /frontend
-app.get('/frontend/*', (req, res) => {
+// Redirect unauthenticated embedded requests to /auth
+app.get('/frontend/*', (req, res, next) => {
+    const shop = req.query.shop;
+    const host = req.query.host;
+
+    if (!shop || !host) {
+        // Redirect to your OAuth start
+        return res.redirect(`/auth?shop=${shop || ''}`);
+    }
+
+    // Serve React frontend if shop & host exist
     res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
