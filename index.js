@@ -101,6 +101,11 @@ app.use((err, req, res, next) => {
     });
 });
 
+// Redirect root requests (Shopify loads the app at /)
+app.get('/', (req, res) => {
+    res.redirect('/frontend/');
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`🚀 Smart Offers & Bundles app running on port ${PORT}`);
