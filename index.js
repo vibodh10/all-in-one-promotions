@@ -45,22 +45,21 @@ app.use((req, res, next) => {
 
 // CSP middleware
 app.use((req, res, next) => {
-    const shopOrigin = req.query.shop;
+    const shopOrigin = req.query.shop ? `https://${req.query.shop}` : '';
 
-    res.setHeader(
-        "Content-Security-Policy",
-        [
-            "default-src 'self'",                    // allow scripts/styles/images from self by default
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-            "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data: https:",          // explicitly allow images from self, data URIs, https
-            "connect-src 'self' https://argus.shopifycloud.com",
-            `frame-ancestors https://${shopOrigin} https://admin.shopify.com`,
-            "object-src 'none'",
-            "base-uri 'self'"
-        ].join('; ')
-    );
+    // Always use a single line, no extra spaces or newlines
+    const csp = `
+    default-src 'self' data: blob: https:;
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https:;
+    style-src 'self' 'unsafe-inline' https:;
+    img-src 'self' data: blob: https:;
+    connect-src 'self' https://argus.shopifycloud.com https://*;
+    frame-ancestors ${shopOrigin} https://admin.shopify.com;
+    object-src 'none';
+    base-uri 'self';
+  `.replace(/\s{2,}/g, ' ').trim(); // cleans up line breaks
 
+    res.setHeader('Content-Security-Policy', csp);
     next();
 });
 
