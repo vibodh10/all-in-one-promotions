@@ -85,6 +85,11 @@ const frontendPath = path.join(__dirname, 'frontend', 'dist'); // Vite build
 
 app.use('/frontend', express.static(frontendPath));
 
+// Redirect root requests (Shopify loads the app at /)
+app.get('/', (req, res) => {
+    res.redirect('/frontend/');
+});
+
 // Catch-all for React routes under /frontend
 app.get('/frontend/*', (req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'));
@@ -101,10 +106,6 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Redirect root requests (Shopify loads the app at /)
-app.get('/', (req, res) => {
-    res.redirect('/frontend/');
-});
 
 // Start server
 app.listen(PORT, () => {
