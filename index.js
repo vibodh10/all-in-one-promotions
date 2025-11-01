@@ -78,26 +78,36 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/webhooks', webhookRoutes);
 
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const app = express();
+
+// Resolve __dirname for ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Path to Vite/React build
 const frontendPath = path.join(__dirname, 'frontend', 'dist');
 
-app.use(express.static(frontendPath));
+// Serve static files under /frontend
+app.use('/frontend', express.static(frontendPath, {
+    index: false, // prevents serving index.html for every request
+}));
 
-// Catch-all for React routing
-app.get('*', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'index.html'));
+// Redirect root (Shopify loads app at /) and preserve query params
+app.get('/', (req, res) => {
+    const queryString = req.url.split('?')[1];
+    const redirectUrl = `/frontend/${queryString ? '?' + queryString : ''}`;
+    res.redirect(302, redirectUrl);
 });
 
-// Redirect unauthenticated embedded requests to /auth
+// Catch-all for React Router (any path under /frontend that is not a static file)
 app.get('/frontend/*', (req, res, next) => {
-    const shop = req.query.shop;
-    const host = req.query.host;
-
-    if (!shop || !host) {
-        // Redirect to your OAuth start
-        return res.redirect(`/auth?shop=${shop || ''}`);
-    }
+    // Skip requests for real static files (like JS/CSS/images)
+    if (req.path.match(/\.[^\/]+$/)) return next();
+    res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // Error handler
