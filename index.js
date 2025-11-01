@@ -86,8 +86,9 @@ const frontendPath = path.join(__dirname, 'frontend', 'dist'); // Vite build
 app.use('/frontend', express.static(frontendPath));
 
 app.get('/', (req, res) => {
-    const query = req.url.split('?')[1]; // grab everything after '?'
-    res.redirect(302, `/frontend/${query ? '?' + query : ''}`);
+    const query = req.url.split('?')[1]; // everything after '?'
+    const redirectUrl = '/frontend' + (query ? `?${query}` : '');
+    res.redirect(302, redirectUrl);
 });
 
 // Redirect unauthenticated embedded requests to /auth
