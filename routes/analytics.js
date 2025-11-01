@@ -2,7 +2,7 @@ import express from 'express';
 const router = express.Router();
 
 import { verifyRequest } from '../middleware/auth.js';
-import db from '../utils/database.js';
+import database from '../utils/database.js';
 
 // Apply authentication to all routes
 router.use(verifyRequest);
@@ -51,7 +51,7 @@ router.post('/event', async (req, res) => {
     };
 
     // Save event to database
-    await db.saveAnalyticsEvent(event);
+    await database.saveAnalyticsEvent(event);
 
     // Update offer analytics counters
     if (offerId) {
@@ -81,7 +81,7 @@ router.get('/offers/:id', async (req, res) => {
     const { startDate, endDate } = req.query;
     const shopId = req.session.shop;
 
-    const offer = await db.getOfferById(id, shopId);
+    const offer = await database.getOfferById(id, shopId);
     if (!offer) {
       return res.status(404).json({
         success: false,
@@ -90,7 +90,7 @@ router.get('/offers/:id', async (req, res) => {
     }
 
     // Get events for date range
-    const events = await db.getAnalyticsEvents({
+    const events = await database.getAnalyticsEvents({
       offerId: id,
       shopId,
       startDate: startDate ? new Date(startDate) : null,
@@ -149,10 +149,10 @@ router.get('/dashboard', async (req, res) => {
     }
 
     // Get all offers
-    const offers = await db.getOffers({ shopId, status: 'active' });
+    const offers = await database.getOffers({ shopId, status: 'active' });
 
     // Get all events in date range
-    const events = await db.getAnalyticsEvents({
+    const events = await database.getAnalyticsEvents({
       shopId,
       startDate,
       endDate
@@ -271,7 +271,7 @@ router.get('/export', async (req, res) => {
       filters.offerIds = offerIds.split(',');
     }
 
-    const events = await db.getAnalyticsEvents(filters);
+    const events = await database.getAnalyticsEvents(filters);
 
     // Generate CSV
     const csv = generateCSV(events);
@@ -292,7 +292,7 @@ router.get('/export', async (req, res) => {
  * Update offer analytics counters
  */
 async function updateOfferAnalytics(offerId, eventName, cartValue = 0) {
-  const offer = await db.getOfferById(offerId);
+  const offer = await database.getOfferById(offerId);
   if (!offer) return;
 
   const updates = { ...offer.analytics };
@@ -310,7 +310,7 @@ async function updateOfferAnalytics(offerId, eventName, cartValue = 0) {
       break;
   }
 
-  await db.updateOffer(offerId, { analytics: updates });
+  await database.updateOffer(offerId, { analytics: updates });
 }
 
 /**
