@@ -15,6 +15,19 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+import cookieParser from 'cookie-parser';
+import session from 'express-session';
+
+app.use(cookieParser());
+app.use(
+    session({
+        secret: process.env.SESSION_SECRET || 'something-strong',
+        resave: false,
+        saveUninitialized: false,
+        cookie: { secure: process.env.NODE_ENV === 'production', sameSite: 'none' },
+    })
+);
+
 // Logging middleware
 app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
