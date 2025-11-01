@@ -78,44 +78,33 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/webhooks', webhookRoutes);
 
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
 const frontendPath = path.join(__dirname, "frontend", "dist");
 
-// ✅ Serve only real static files under /frontend
-app.use(
-    "/frontend",
-    express.static(frontendPath, {
-        index: false, // don’t auto-serve index.html
-        setHeaders: (res, filePath) => {
-            // Fix MIME type issues for JS files
-            if (filePath.endsWith(".js")) {
-                res.type("application/javascript");
-            }
-        },
-    })
-);
+// Serve frontend static assets
+app.use("/frontend", express.static(frontendPath));
 
-// 1️⃣ Handle root requests and ensure Shopify params are preserved
+// --- Handle root requests (Shopify entry point) ---
 app.get("/", (req, res) => {
     const { shop, host } = req.query;
 
-    // If missing params, redirect to auth
+    // If missing params → redirect to auth
     if (!shop || !host) {
-        const query = req.originalUrl.split("?")[1] || "";
-        console.log("Missing shop/host. Redirecting to /auth", query);
-        return res.redirect(`/auth?${query || ""}`);
+        return res.redirect(`/auth?shop=${shop || ""}`);
     }
 
-    // Otherwise, forward to frontend with params intact
-    const redirectUrl = `/frontend/?shop=${shop}&host=${host}`;
-    console.log("Redirecting to:", redirectUrl);
-    res.redirect(302, redirectUrl);
+    // ✅ Preserve params and forward to frontend
+    res.redirect(302, `/frontend/?shop=${shop}&host=${host}`);
 });
 
-// ✅ Serve index.html for all frontend routes except real static files
-app.get("/frontend/*", (req, res, next) => {
-    if (/\.[a-zA-Z0-9]+$/.test(req.path)) return next();
+// --- Serve frontend files (React/Vite) ---
+app.get("/frontend/*", (req, res) => {
     res.sendFile(path.join(frontendPath, "index.html"));
 });
 
