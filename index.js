@@ -96,10 +96,19 @@ app.use(
     })
 );
 
+// 1️⃣ Handle root requests and ensure Shopify params are preserved
 app.get("/", (req, res) => {
-    // preserve everything after '?'
-    const query = req.originalUrl.split("?")[1] || "";
-    const redirectUrl = `/frontend${query ? "?" + query : ""}`;
+    const { shop, host } = req.query;
+
+    // If missing params, redirect to auth
+    if (!shop || !host) {
+        const query = req.originalUrl.split("?")[1] || "";
+        console.log("Missing shop/host. Redirecting to /auth", query);
+        return res.redirect(`/auth?${query || ""}`);
+    }
+
+    // Otherwise, forward to frontend with params intact
+    const redirectUrl = `/frontend/?shop=${shop}&host=${host}`;
     console.log("Redirecting to:", redirectUrl);
     res.redirect(302, redirectUrl);
 });
@@ -121,9 +130,8 @@ app.use((err, req, res, next) => {
     });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Smart Offers & Bundles app running on port ${PORT}`);
-    console.log(`📍 Environment: ${process.env.NODE_ENV}`);
 });
 
 export default app;
