@@ -96,10 +96,11 @@ app.use(
     })
 );
 
-// ✅ Preserve query params when redirecting root requests
 app.get("/", (req, res) => {
-    const query = req.originalUrl.split("?")[1];
-    const redirectUrl = `/frontend/${query ? "?" + query : ""}`;
+    // preserve everything after '?'
+    const query = req.originalUrl.split("?")[1] || "";
+    const redirectUrl = `/frontend${query ? "?" + query : ""}`;
+    console.log("Redirecting to:", redirectUrl);
     res.redirect(302, redirectUrl);
 });
 
@@ -120,8 +121,6 @@ app.use((err, req, res, next) => {
     });
 });
 
-
-// Start server
 app.listen(PORT, () => {
     console.log(`🚀 Smart Offers & Bundles app running on port ${PORT}`);
     console.log(`📍 Environment: ${process.env.NODE_ENV}`);
