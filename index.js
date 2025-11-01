@@ -98,9 +98,6 @@ app.get('/frontend/*', (req, res, next) => {
         // Redirect to your OAuth start
         return res.redirect(`/auth?shop=${shop || ''}`);
     }
-
-    // Serve React frontend if shop & host exist
-    res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // Error handler
