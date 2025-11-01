@@ -85,9 +85,9 @@ const frontendPath = path.join(__dirname, 'frontend', 'dist'); // Vite build
 
 app.use('/frontend', express.static(frontendPath));
 
-// Redirect root requests (Shopify loads the app at /)
 app.get('/', (req, res) => {
-    res.redirect('/frontend/');
+    const query = req.url.split('?')[1]; // grab everything after '?'
+    res.redirect(302, `/frontend/${query ? '?' + query : ''}`);
 });
 
 // Redirect unauthenticated embedded requests to /auth
