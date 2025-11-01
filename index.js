@@ -78,30 +78,35 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/webhooks', webhookRoutes);
 
-// Resolve __dirname for ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const frontendPath = path.join(__dirname, "frontend", "dist");
 
-// Path to Vite/React build
-const frontendPath = path.join(__dirname, 'frontend', 'dist');
+// ✅ Serve only real static files under /frontend
+app.use(
+    "/frontend",
+    express.static(frontendPath, {
+        index: false, // don’t auto-serve index.html
+        setHeaders: (res, filePath) => {
+            // Fix MIME type issues for JS files
+            if (filePath.endsWith(".js")) {
+                res.type("application/javascript");
+            }
+        },
+    })
+);
 
-// Serve static files under /frontend
-app.use('/frontend', express.static(frontendPath, {
-    index: false, // prevents serving index.html for every request
-}));
-
-// Redirect root (Shopify loads app at /) and preserve query params
-app.get('/', (req, res) => {
-    const queryString = req.url.split('?')[1];
-    const redirectUrl = `/frontend/${queryString ? '?' + queryString : ''}`;
+// ✅ Preserve query params when redirecting root requests
+app.get("/", (req, res) => {
+    const query = req.originalUrl.split("?")[1];
+    const redirectUrl = `/frontend/${query ? "?" + query : ""}`;
     res.redirect(302, redirectUrl);
 });
 
-// Catch-all for React Router (any path under /frontend that is not a static file)
-app.get('/frontend/*', (req, res, next) => {
-    // Skip requests for real static files (like JS/CSS/images)
-    if (req.path.match(/\.[^\/]+$/)) return next();
-    res.sendFile(path.join(frontendPath, 'index.html'));
+// ✅ Serve index.html for all frontend routes except real static files
+app.get("/frontend/*", (req, res, next) => {
+    if (/\.[a-zA-Z0-9]+$/.test(req.path)) return next();
+    res.sendFile(path.join(frontendPath, "index.html"));
 });
 
 // Error handler
