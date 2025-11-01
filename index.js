@@ -78,17 +78,15 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/webhooks', webhookRoutes);
 
-// Frontend static files under /frontend
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const frontendPath = path.join(__dirname, 'frontend', 'dist'); // Vite build
+const frontendPath = path.join(__dirname, 'frontend', 'dist');
 
-app.use('/frontend', express.static(frontendPath));
+app.use(express.static(frontendPath));
 
-app.get('/', (req, res) => {
-    const query = req.url.split('?')[1]; // everything after '?'
-    const redirectUrl = '/frontend' + (query ? `?${query}` : '');
-    res.redirect(302, redirectUrl);
+// Catch-all for React routing
+app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // Redirect unauthenticated embedded requests to /auth
