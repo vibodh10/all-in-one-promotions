@@ -8,7 +8,6 @@ import OfferBuilder from './pages/OfferBuilder.jsx';
 
 function App() {
     const [config, setConfig] = useState(null);
-    const [bridgeReady, setBridgeReady] = useState(false);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -16,31 +15,20 @@ function App() {
         const shop = params.get('shop');
 
         if (host && shop) {
-            const appBridgeConfig = {
+            setConfig({
                 apiKey: import.meta.env.VITE_SHOPIFY_API_KEY,
                 host,
                 forceRedirect: true,
-            };
-
-            setConfig(appBridgeConfig);
-
-            // ✅ Wait until Shopify injects its global object
-            const checkShopifyReady = () => {
-                if (window.Shopify && window.Shopify.AppBridge) {
-                    setBridgeReady(true);
-                } else {
-                    setTimeout(checkShopifyReady, 100);
-                }
-            };
-
-            checkShopifyReady();
+            });
+        } else {
+            console.warn('Shopify host or shop not found in URL.');
         }
     }, []);
 
-    if (!config || !bridgeReady) {
+    if (!config) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                <Spinner accessibilityLabel="Loading App Bridge" size="large" />
+                <Spinner accessibilityLabel="Loading App" size="large" />
             </div>
         );
     }
