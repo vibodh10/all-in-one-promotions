@@ -97,7 +97,7 @@ async function storeSession(session) {
  * Create billing charge for merchant
  */
 async function createBillingCharge(session) {
-    await billing.createCharge(session);
+    // Later implement this
 }
 
 export { createShopifyAuth, verifyRequest, verifyWebhook };
