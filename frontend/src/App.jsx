@@ -32,7 +32,7 @@ function App() {
     return (
         <AppBridgeProvider config={config}>
             <AppProvider i18n={enTranslations}>
-                <BrowserRouter>
+                <BrowserRouter basename="/frontend">
                     <Frame>
                         <Routes>
                             <Route path="/" element={<Dashboard />} />
