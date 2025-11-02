@@ -309,23 +309,25 @@ function OfferBuilder() {
                 </InlineStack>
 
                 {/* Resource Pickers */}
-                {showProductPicker && (
+                {showProductPicker && app && (
                     <ResourcePicker
                         resourceType="Product"
                         open={showProductPicker}
                         onSelection={handleProductSelection}
                         onCancel={() => setShowProductPicker(false)}
                         selectMultiple={true}
+                        app={app} // important!
                     />
                 )}
 
-                {showCollectionPicker && (
+                {showCollectionPicker && app && (
                     <ResourcePicker
                         resourceType="Collection"
                         open={showCollectionPicker}
                         onSelection={handleCollectionSelection}
                         onCancel={() => setShowCollectionPicker(false)}
                         selectMultiple={true}
+                        app={app} // important!
                     />
                 )}
 
