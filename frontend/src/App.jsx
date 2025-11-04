@@ -1,3 +1,4 @@
+import '@shopify/polaris/build/esm/styles.css';
 import React, { useState, useEffect } from 'react';
 import { AppProvider, Frame, Spinner } from '@shopify/polaris';
 import { Provider as AppBridgeProvider } from '@shopify/app-bridge-react';
