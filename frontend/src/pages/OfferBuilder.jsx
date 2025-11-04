@@ -15,17 +15,18 @@ import {
     Banner,
     Thumbnail,
 } from '@shopify/polaris';
-import { ResourcePicker } from '@shopify/app-bridge-react';
+import { useAppBridge } from '@shopify/app-bridge-react';
+import { ResourcePicker } from '@shopify/app-bridge/actions';
 import { useNavigate } from 'react-router-dom';
 import { DeleteIcon } from '@shopify/polaris-icons';
 import axios from 'axios';
 
 function OfferBuilder() {
     const navigate = useNavigate();
+    const app = useAppBridge();
+
     const [step, setStep] = useState(1);
     const [errors, setErrors] = useState([]);
-    const [showProductPicker, setShowProductPicker] = useState(false);
-    const [showCollectionPicker, setShowCollectionPicker] = useState(false);
 
     const [offerData, setOfferData] = useState({
         name: '',
@@ -94,37 +95,53 @@ function OfferBuilder() {
         }));
 
     // ---- Product Picker ---- //
-    const handleProductSelection = useCallback((resources) => {
-        const selected = resources.selection.map((p) => ({
-            id: p.id,
-            title: p.title,
-            images: p.images,
-        }));
-        setOfferData((prev) => ({
-            ...prev,
-            products: [
-                ...prev.products,
-                ...selected.filter((p) => !prev.products.some((x) => x.id === p.id)),
-            ],
-        }));
-        setShowProductPicker(false);
-    }, []);
+    const openProductPicker = () => {
+        const picker = ResourcePicker.create(app, {
+            resourceType: ResourcePicker.ResourceType.Product,
+            options: { selectMultiple: true },
+        });
 
-    const handleCollectionSelection = useCallback((resources) => {
-        const selected = resources.selection.map((c) => ({
-            id: c.id,
-            title: c.title,
-            image: c.image,
-        }));
-        setOfferData((prev) => ({
-            ...prev,
-            collections: [
-                ...prev.collections,
-                ...selected.filter((c) => !prev.collections.some((x) => x.id === c.id)),
-            ],
-        }));
-        setShowCollectionPicker(false);
-    }, []);
+        picker.subscribe(ResourcePicker.Action.SELECT, (payload) => {
+            const selected = payload.selection.map((p) => ({
+                id: p.id,
+                title: p.title,
+                images: p.images,
+            }));
+            setOfferData((prev) => ({
+                ...prev,
+                products: [
+                    ...prev.products,
+                    ...selected.filter((p) => !prev.products.some((x) => x.id === p.id)),
+                ],
+            }));
+        });
+
+        picker.dispatch(ResourcePicker.Action.OPEN);
+    };
+
+    const openCollectionPicker = () => {
+        const picker = ResourcePicker.create(app, {
+            resourceType: ResourcePicker.ResourceType.Collection,
+            options: { selectMultiple: true },
+        });
+
+        picker.subscribe(ResourcePicker.Action.SELECT, (payload) => {
+            const selected = payload.selection.map((c) => ({
+                id: c.id,
+                title: c.title,
+                image: c.image,
+            }));
+            setOfferData((prev) => ({
+                ...prev,
+                collections: [
+                    ...prev.collections,
+                    ...selected.filter((c) => !prev.collections.some((x) => x.id === c.id)),
+                ],
+            }));
+        });
+
+        picker.dispatch(ResourcePicker.Action.OPEN);
+    };
 
     const removeProduct = useCallback((id) => {
         setOfferData((prev) => ({
@@ -225,24 +242,9 @@ function OfferBuilder() {
         <Card>
             <BlockStack gap="400">
                 <InlineStack gap="300">
-                    <Button onClick={() => setShowProductPicker(true)}>Select Products</Button>
-                    <Button onClick={() => setShowCollectionPicker(true)}>Select Collections</Button>
+                    <Button onClick={openProductPicker}>Select Products</Button>
+                    <Button onClick={openCollectionPicker}>Select Collections</Button>
                 </InlineStack>
-
-                <ResourcePicker
-                    resourceType="Product"
-                    open={showProductPicker}
-                    onSelection={handleProductSelection}
-                    onCancel={() => setShowProductPicker(false)}
-                    selectMultiple
-                />
-                <ResourcePicker
-                    resourceType="Collection"
-                    open={showCollectionPicker}
-                    onSelection={handleCollectionSelection}
-                    onCancel={() => setShowCollectionPicker(false)}
-                    selectMultiple
-                />
 
                 <ResourceList
                     resourceName={{ singular: 'product', plural: 'products' }}
