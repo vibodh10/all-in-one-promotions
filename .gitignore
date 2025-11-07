@@ -5,7 +5,11 @@ yarn-debug.log*
 yarn-error.log*
 
 # Environment
+<<<<<<< HEAD
 frontend/.env
+=======
+.env
+>>>>>>> 40b901eef2dc526d45525ccac35a6b5423dfded3
 .env.local
 .env.production
 .env.*.local

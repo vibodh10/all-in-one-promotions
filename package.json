@@ -11,7 +11,11 @@
     "deploy": "shopify app deploy",
     "generate": "shopify app generate",
     "test": "jest",
+<<<<<<< HEAD
     "lint": "eslint all-in-one-promotions --ext .js,.jsx",
+=======
+    "lint": "eslint . --ext .js,.jsx",
+>>>>>>> 40b901eef2dc526d45525ccac35a6b5423dfded3
     "prettier": "prettier --write '**/*.{js,jsx,json,md}'"
   },
   "engines": {
