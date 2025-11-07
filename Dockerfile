@@ -12,11 +12,8 @@ COPY package*.json ./
 RUN npm ci --only=production
 
 # Copy application files
-<<<<<<< HEAD
 COPY all-in-one-promotions .
-=======
 COPY . .
->>>>>>> 40b901eef2dc526d45525ccac35a6b5423dfded3
 
 # Production stage
 FROM node:16-alpine
