@@ -1,0 +1,40 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "c4b43eb51d6318e8af3400b6b5a7a264"
+name = "All-in-one Promotions"
+application_url = "https://all-in-one-promotions.onrender.com"
+embedded = true
+
+[webhooks]
+api_version = "2025-10"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/api/webhooks/app/uninstalled"
+
+  [[webhooks.subscriptions]]
+  topics = [ "products/delete" ]
+  uri = "/api/webhooks/products/delete"
+
+  [[webhooks.subscriptions]]
+  topics = [ "products/update" ]
+  uri = "/api/webhooks/products/update"
+
+  [[webhooks.subscriptions]]
+  topics = [ "shop/update" ]
+  uri = "/api/webhooks/shop/update"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_products"
+optional_scopes = [ ]
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [
+  "https://all-in-one-promotions.onrender.com/auth/callback",
+  "https://all-in-one-promotions.onrender.com/auth/shopify/callback"
+]
+
+[pos]
+embedded = false
