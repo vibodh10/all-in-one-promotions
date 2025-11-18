@@ -1,6 +1,7 @@
 import express from 'express';
 import { verifyRequest } from '../middleware/auth.js';
-import { Shopify } from '@shopify/shopify-api';
+import pkg from '@shopify/shopify-api';
+const { Shopify } = pkg;
 import database from '../utils/database.js'; // ESM import for your database utils
 
 const router = express.Router();
