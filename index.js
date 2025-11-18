@@ -1,4 +1,5 @@
 // index.js (ESM)
+import '@shopify/shopify-api/adapters/node';
 import express from 'express';
 import { shopifyApi, LATEST_API_VERSION } from '@shopify/shopify-api';
 import { createShopifyAuth } from './middleware/auth.js';
