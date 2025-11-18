@@ -11,7 +11,8 @@ const { Shopify } = ShopifyPkg;
  */
 async function createDiscount(session, offer) {
   try {
-    const client = new Shopify.Clients.Rest(session.shop, session.accessToken);
+    const client = new shopify.clients
+.Rest(session.shop, session.accessToken);
 
     // Determine discount type and create accordingly
     if (offer.type === 'quantity_break' || offer.type === 'volume_discount') {
@@ -191,7 +192,8 @@ async function deleteDiscount(session, offer) {
   try {
     if (!offer.shopifyDiscountId) return;
 
-    const client = new Shopify.Clients.Rest(session.shop, session.accessToken);
+    const client = new shopify.clients
+.Rest(session.shop, session.accessToken);
 
     await client.delete({
       path: `price_rules/${offer.shopifyDiscountId}`
@@ -209,7 +211,8 @@ async function disableDiscount(session, offer) {
   try {
     if (!offer.shopifyDiscountId) return;
 
-    const client = new Shopify.Clients.Rest(session.shop, session.accessToken);
+    const client = new shopify.clients
+.Rest(session.shop, session.accessToken);
 
     // Set end date to now to disable
     await client.put({
@@ -232,7 +235,8 @@ async function disableDiscount(session, offer) {
  */
 async function getProduct(session, productId) {
   try {
-    const client = new Shopify.Clients.Rest(session.shop, session.accessToken);
+    const client = new shopify.clients
+.Rest(session.shop, session.accessToken);
 
     const response = await client.get({
       path: `products/${productId}`
@@ -250,7 +254,8 @@ async function getProduct(session, productId) {
  */
 async function getCollection(session, collectionId) {
   try {
-    const client = new Shopify.Clients.Rest(session.shop, session.accessToken);
+    const client = new shopify.clients
+.Rest(session.shop, session.accessToken);
 
     const response = await client.get({
       path: `collections/${collectionId}`
@@ -268,7 +273,8 @@ async function getCollection(session, collectionId) {
  */
 async function getProductsFromCollection(session, collectionId) {
   try {
-    const client = new Shopify.Clients.Rest(session.shop, session.accessToken);
+    const client = new shopify.clients
+.Rest(session.shop, session.accessToken);
 
     const response = await client.get({
       path: `collections/${collectionId}/products`

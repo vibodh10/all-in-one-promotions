@@ -54,7 +54,8 @@ function createShopifyAuth() {
  */
 async function verifyRequest(req, res, next) {
     try {
-        const session = await Shopify.Utils.loadCurrentSession(req, res, true);
+        const session = await shopify.utils
+.loadCurrentSession(req, res, true);
 
         if (!session) {
             return res.status(401).json({ error: 'Unauthorized' });
@@ -73,7 +74,8 @@ async function verifyRequest(req, res, next) {
  */
 async function verifyWebhook(req, res, next) {
     try {
-        const isValid = await Shopify.Webhooks.Registry.process(req, res);
+        const isValid = await shopify.webhooks
+.Registry.process(req, res);
 
         if (!isValid) {
             return res.status(401).json({ error: 'Invalid webhook' });
