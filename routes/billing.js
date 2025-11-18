@@ -84,7 +84,8 @@ router.post('/subscribe', async (req, res) => {
 
         const planDetails = BILLING_PLANS[plan];
 
-        const client = new Shopify.Clients.Rest(session.shop, session.accessToken);
+        const client = new shopify.clients
+.Rest(session.shop, session.accessToken);
 
         const response = await client.post({
             path: 'recurring_application_charges',
@@ -127,7 +128,8 @@ router.get('/callback', async (req, res) => {
 
         if (!charge_id) return res.redirect('/?error=missing_charge_id');
 
-        const client = new Shopify.Clients.Rest(session.shop, session.accessToken);
+        const client = new shopify.clients
+.Rest(session.shop, session.accessToken);
 
         const activateResponse = await client.post({
             path: `recurring_application_charges/${charge_id}/activate`,
@@ -167,7 +169,8 @@ router.post('/cancel', async (req, res) => {
             return res.status(400).json({ success: false, error: 'No active subscription to cancel' });
         }
 
-        const client = new Shopify.Clients.Rest(session.shop, session.accessToken);
+        const client = new shopify.clients
+.Rest(session.shop, session.accessToken);
 
         await client.delete({ path: `recurring_application_charges/${subscription.chargeId}` });
 

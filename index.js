@@ -1,7 +1,7 @@
 // index.js (ESM)
 import express from 'express';
-import pkg from '@shopify/shopify-api';
-const { Shopify } = pkg;import { createShopifyAuth } from './middleware/auth.js';
+import { shopifyApi, LATEST_API_VERSION } from '@shopify/shopify-api';
+import { createShopifyAuth } from './middleware/auth.js';
 import offerRoutes from './routes/offers.js';
 import analyticsRoutes from './routes/analytics.js';
 import billingRoutes from './routes/billing.js';
@@ -35,14 +35,13 @@ app.use((req, res, next) => {
 });
 
 // Initialize Shopify API
-Shopify.Context.initialize({
-    API_KEY: process.env.VITE_SHOPIFY_API_KEY,
-    API_SECRET_KEY: process.env.SHOPIFY_API_SECRET,
-    SCOPES: process.env.SHOPIFY_SCOPES.split(','),
-    HOST_NAME: process.env.APP_URL.replace(/^https?:\/\//, ''),
-    API_VERSION: '2024-01',
-    IS_EMBEDDED_APP: true,
-    SESSION_STORAGE: new Shopify.Session.MemorySessionStorage(),
+const shopify = shopifyApi({
+    apiKey: process.env.SHOPIFY_API_KEY,
+    apiSecretKey: process.env.SHOPIFY_API_SECRET,
+    scopes: process.env.SCOPES.split(","),
+    hostName: process.env.HOST.replace(/https?:\/\//, ""),
+    apiVersion: LATEST_API_VERSION,
+    isEmbeddedApp: true,
 });
 
 // Body parsers

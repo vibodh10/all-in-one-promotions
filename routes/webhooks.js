@@ -167,7 +167,8 @@ router.post('/checkouts/create', verifyWebhook, async (req, res) => {
  * Register all webhooks for a shop
  */
 export async function registerWebhooks(session) {
-    const client = new Shopify.Clients.Rest(session.shop, session.accessToken);
+    const client = new shopify.clients
+.Rest(session.shop, session.accessToken);
 
     const webhooks = [
         { topic: 'app/uninstalled', address: `${process.env.APP_URL}/api/webhooks/app/uninstalled` },

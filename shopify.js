@@ -2,7 +2,17 @@
 import { Shopify } from "@shopify/shopify-api";
 
 // Initialize Shopify API context
-Shopify.Context.initialize({
+import { shopifyApi, LATEST_API_VERSION } from '@shopify/shopify-api';
+
+const shopify = shopifyApi({
+  apiKey: process.env.SHOPIFY_API_KEY,
+  apiSecretKey: process.env.SHOPIFY_API_SECRET,
+  scopes: process.env.SCOPES.split(","),
+  hostName: process.env.HOST.replace(/https?:\/\//, ""),
+  apiVersion: LATEST_API_VERSION,
+  isEmbeddedApp: true,
+});
+({
     API_KEY: process.env.VITE_SHOPIFY_API_KEY,
     API_SECRET_KEY: process.env.SHOPIFY_API_SECRET,
     SCOPES: process.env.SCOPES.split(","),
