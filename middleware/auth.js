@@ -1,5 +1,5 @@
-import { Shopify } from '@shopify/shopify-api';
-import * as billing from '../routes/billing.js';
+import pkg from '@shopify/shopify-api';
+const { Shopify } = pkg;import * as billing from '../routes/billing.js';
 import database from "../utils/database.js";
 
 /**
