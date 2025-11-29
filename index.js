@@ -139,6 +139,14 @@ app.use((err, req, res, next) => {
     });
 });
 
+app.get("/debug-session", (req, res) => {
+    res.json({
+        query: req.query,
+        session: req.session,
+        cookies: req.cookies
+    });
+});
+
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Smart Offers & Bundles app running on port ${PORT}`);
 });
