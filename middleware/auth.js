@@ -34,8 +34,18 @@ function createShopifyAuth() {
                     host: req.session.host
                 });
 
-                // ✅ Redirect directly to frontend WITH params
-                return res.redirect(`/frontend/?shop=${session.shop}&host=${req.session.host}`);
+                // ✅ Persist shop and host for later use
+                req.session.shop = session.shop;
+                req.session.host = req.query.host || session.host;
+
+                await new Promise((resolve, reject) => {
+                    req.session.save(err => (err ? reject(err) : resolve()));
+                });
+
+                console.log("✅ Saved session:", req.session);
+
+                return res.redirect(`/frontend/?shop=${req.session.shop}&host=${req.session.host}`);
+
             }
 
             // --- Begin OAuth flow ---
