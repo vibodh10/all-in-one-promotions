@@ -10,6 +10,16 @@ import webhookRoutes from './routes/webhooks.js';
 import dotenv from 'dotenv';
 import path from "path";
 import { fileURLToPath } from 'url';
+import pgSession from 'connect-pg-simple';
+import pkg from 'pg';
+const { Pool } = pkg;
+
+const PgSession = pgSession(session);
+
+const pgPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+});
 
 dotenv.config();
 
@@ -22,10 +32,19 @@ import session from 'express-session';
 app.use(cookieParser());
 app.use(
     session({
+        store: new PgSession({
+            pool: pgPool,
+            tableName: 'user_sessions',
+        }),
         secret: process.env.SESSION_SECRET || 'something-strong',
         resave: false,
         saveUninitialized: false,
-        cookie: { secure: process.env.NODE_ENV === 'production', sameSite: 'none' },
+        cookie: {
+            secure: process.env.NODE_ENV === 'production',
+            httpOnly: true,
+            sameSite: 'none',
+            maxAge: 24 * 60 * 60 * 1000, // 1 day
+        },
     })
 );
 
