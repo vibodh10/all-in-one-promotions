@@ -29,7 +29,7 @@ function createShopifyAuth() {
                 await createBillingCharge(session);
 
                 // Redirect to app
-                return res.redirect(`/frontend/?shop=${shop}&host=${session.host || ''}`);
+                return res.redirect(`/frontend/?shop=${shop}&host=${req.session.host || ''}`);
             }
 
             // Begin OAuth flow

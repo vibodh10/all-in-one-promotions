@@ -82,7 +82,12 @@ app.get('/health', (req, res) => {
 });
 
 // Authentication routes
-app.get('/auth', createShopifyAuth());
+app.get('/auth', (req, res, next) => {
+    if (req.query.host) {
+        req.session.host = req.query.host;
+    }
+    next();
+}, createShopifyAuth());
 app.get('/auth/callback', createShopifyAuth());
 
 // API routes
