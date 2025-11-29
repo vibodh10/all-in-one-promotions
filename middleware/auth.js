@@ -1,5 +1,6 @@
 import pkg from '@shopify/shopify-api';
-const { Shopify } = pkg;import * as billing from '../routes/billing.js';
+const { Shopify } = pkg;
+import * as billing from '../routes/billing.js';
 import database from "../utils/database.js";
 
 /**
@@ -14,34 +15,34 @@ function createShopifyAuth() {
         }
 
         try {
-            // Handle OAuth callback
+            // --- OAuth Callback ---
             if (req.path === '/auth/callback') {
-                const session = await Shopify.Auth.validateAuthCallback(
-                    req,
-                    res,
-                    req.query
-                );
+                const session = await Shopify.Auth.validateAuthCallback(req, res, req.query);
 
-                // Store session in database
+                // ✅ Store session in DB
                 await storeSession(session);
 
-                // Create billing charge if needed
+                // ✅ Save session info for redirect use
+                req.session.shop = session.shop;
+                req.session.host = req.query.host || session.host;
+
+                // ✅ Create billing charge if needed
                 await createBillingCharge(session);
 
-                // Redirect to app
-                return res.redirect(`/frontend/?shop=${shop}&host=${req.session.host || ''}`);
+                console.log("✅ OAuth callback success:", {
+                    shop: session.shop,
+                    host: req.session.host
+                });
+
+                // ✅ Redirect directly to frontend WITH params
+                return res.redirect(`/frontend/?shop=${session.shop}&host=${req.session.host}`);
             }
 
-            // Begin OAuth flow
-            const authRoute = await Shopify.Auth.beginAuth(
-                req,
-                res,
-                shop,
-                '/auth/callback',
-                false
-            );
-
+            // --- Begin OAuth flow ---
+            const authRoute = await Shopify.Auth.beginAuth(req, res, shop, '/auth/callback', false);
+            console.log("🔁 Redirecting to Shopify OAuth:", { shop });
             return res.redirect(authRoute);
+
         } catch (error) {
             console.error('Auth error:', error);
             return res.status(500).json({ error: 'Authentication failed' });
@@ -54,8 +55,7 @@ function createShopifyAuth() {
  */
 async function verifyRequest(req, res, next) {
     try {
-        const session = await shopify.utils
-.loadCurrentSession(req, res, true);
+        const session = await Shopify.Utils.loadCurrentSession(req, res, true);
 
         if (!session) {
             return res.status(401).json({ error: 'Unauthorized' });
@@ -74,8 +74,7 @@ async function verifyRequest(req, res, next) {
  */
 async function verifyWebhook(req, res, next) {
     try {
-        const isValid = await shopify.webhooks
-.Registry.process(req, res);
+        const isValid = await Shopify.Webhooks.Registry.process(req, res);
 
         if (!isValid) {
             return res.status(401).json({ error: 'Invalid webhook' });
@@ -99,7 +98,7 @@ async function storeSession(session) {
  * Create billing charge for merchant
  */
 async function createBillingCharge(session) {
-    // Later implement this
+    // Placeholder for later
 }
 
 export { createShopifyAuth, verifyRequest, verifyWebhook };
