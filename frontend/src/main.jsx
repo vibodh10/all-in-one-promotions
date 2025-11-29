@@ -9,9 +9,9 @@ const host = new URLSearchParams(window.location.search).get('host');
 
 // ✅ Configure App Bridge
 const appBridgeConfig = {
-    apiKey: process.env.SHOPIFY_API_KEY, // must be set in Render environment
+    apiKey: import.meta.env.VITE_SHOPIFY_API_KEY, // ✅ correct for Vite
     host,
-    forceRedirect: true, // keeps app inside Shopify Admin
+    forceRedirect: true,
 };
 
 // ✅ Render app inside AppBridgeProvider
