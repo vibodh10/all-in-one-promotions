@@ -16,7 +16,7 @@ import {
     Thumbnail,
 } from '@shopify/polaris';
 import { useAppBridge } from '@shopify/app-bridge-react';
-import { ResourcePicker } from '@shopify/app-bridge/actions';
+import { ResourcePicker } from '@shopify/app-bridge/actions/ResourcePicker';
 import { useNavigate } from 'react-router-dom';
 import { DeleteIcon } from '@shopify/polaris-icons';
 import axios from 'axios';
@@ -96,8 +96,6 @@ function OfferBuilder() {
 
     // ---- Product Picker ---- //
     const openProductPicker = () => {
-        console.log("AppBridge instance:", app);
-        console.log("Host param:", new URLSearchParams(window.location.search).get('host'));
         try {
             if (!app) {
                 console.error('App Bridge not initialized');
@@ -106,7 +104,7 @@ function OfferBuilder() {
             }
 
             const picker = ResourcePicker.create(app, {
-                resourceType: 'product',
+                resourceType: ResourcePicker.ResourceType.Product,
                 options: { selectMultiple: true },
             });
 
@@ -132,27 +130,45 @@ function OfferBuilder() {
     };
 
     const openCollectionPicker = () => {
-        const picker = ResourcePicker.create(app, {
-            resourceType: ResourcePicker.ResourceType.Collection,
-            options: { selectMultiple: true },
-        });
+        try {
+            if (!app) {
+                console.error('App Bridge not initialized');
+                setErrors(['Shopify App Bridge not ready. Please refresh and try again.']);
+                return;
+            }
 
-        picker.subscribe(ResourcePicker.Action.SELECT, (payload) => {
-            const selected = payload.selection.map((c) => ({
-                id: c.id,
-                title: c.title,
-                image: c.image,
-            }));
-            setOfferData((prev) => ({
-                ...prev,
-                collections: [
-                    ...prev.collections,
-                    ...selected.filter((c) => !prev.collections.some((x) => x.id === c.id)),
-                ],
-            }));
-        });
+            const picker = ResourcePicker.create(app, {
+                resourceType: ResourcePicker.ResourceType.Collection,
+                options: { selectMultiple: true },
+            });
 
-        picker.dispatch(ResourcePicker.Action.OPEN);
+            picker.subscribe(ResourcePicker.Action.SELECT, (payload) => {
+                const selected = payload.selection.map((c) => ({
+                    id: c.id,
+                    title: c.title,
+                    image: c.image,
+                }));
+
+                setOfferData((prev) => ({
+                    ...prev,
+                    collections: [
+                        ...prev.collections,
+                        ...selected.filter((c) => !prev.collections.some((x) => x.id === c.id)),
+                    ],
+                }));
+
+                setErrors([]);
+            });
+
+            picker.subscribe(ResourcePicker.Action.CANCEL, () => {
+                console.log('Collection selection canceled');
+            });
+
+            picker.dispatch(ResourcePicker.Action.OPEN);
+        } catch (err) {
+            console.error('Error opening collection picker:', err);
+            setErrors(['Failed to select collections. Please try again.']);
+        }
     };
 
     const removeProduct = useCallback((id) => {
