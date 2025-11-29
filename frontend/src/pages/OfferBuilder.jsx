@@ -96,6 +96,10 @@ function OfferBuilder() {
 
     // ---- Product Picker ---- //
     const openProductPicker = () => {
+        console.log("AppBridge instance:", app);
+        console.log("window.shopify:", window.shopify);
+        console.log("Host param:", new URLSearchParams(window.location.search).get('host'));
+
         try {
             if (!app) {
                 console.error('App Bridge not initialized');
@@ -130,6 +134,10 @@ function OfferBuilder() {
     };
 
     const openCollectionPicker = () => {
+        console.log("AppBridge instance:", app);
+        console.log("window.shopify:", window.shopify);
+        console.log("Host param:", new URLSearchParams(window.location.search).get('host'));
+
         try {
             if (!app) {
                 console.error('App Bridge not initialized');
