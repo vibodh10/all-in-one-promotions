@@ -106,15 +106,21 @@ app.use("/frontend", express.static(frontendPath));
 
 // --- Handle root requests (Shopify entry point) ---
 app.get("/", (req, res) => {
-    const { shop, host } = req.query;
+    const shop = req.query.shop || req.session.shop;
+    const host = req.query.host || req.session.host;
 
-    // If missing params → redirect to auth
     if (!shop || !host) {
+        // Persist shop for later if present
+        if (shop) req.session.shop = shop;
         return res.redirect(`/auth?shop=${shop || ""}`);
     }
 
-    // ✅ Preserve params and forward to frontend
-    res.redirect(302, `/frontend/?shop=${shop}&host=${host}`);
+    // ✅ Always store latest host + shop in session
+    req.session.shop = shop;
+    req.session.host = host;
+
+    // ✅ Explicitly forward params to frontend
+    return res.redirect(302, `/frontend/?shop=${shop}&host=${host}`);
 });
 
 // --- Serve frontend files (React/Vite) ---
