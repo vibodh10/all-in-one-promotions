@@ -6,6 +6,20 @@ import database from "../utils/database.js";
 const { Shopify } = pkg;
 const router = express.Router();
 
+export async function verifyRequest(req, res, next) {
+    try {
+        const session = await Shopify.Utils.loadCurrentSession(req, res, true);
+        if (!session) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        req.session = session;
+        next();
+    } catch (error) {
+        console.error('Verification error:', error);
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+}
+
 // Begin OAuth
 router.get("/auth", async (req, res) => {
     try {
