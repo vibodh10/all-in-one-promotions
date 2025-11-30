@@ -13,6 +13,7 @@ import { fileURLToPath } from 'url';
 import pgSession from 'connect-pg-simple';
 import pkg from 'pg';
 const { Pool } = pkg;
+import authRouter from './middleware/auth.js';
 
 const PgSession = pgSession(session);
 
@@ -101,13 +102,7 @@ app.get('/health', (req, res) => {
 });
 
 // Authentication routes
-app.get('/auth', (req, res, next) => {
-    if (req.query.host) {
-        req.session.host = req.query.host;
-    }
-    next();
-}, createShopifyAuth());
-app.get('/auth/callback', createShopifyAuth());
+app.use(authRouter);
 
 // API routes
 app.use('/api/offers', offerRoutes);
