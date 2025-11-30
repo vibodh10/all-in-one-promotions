@@ -17,6 +17,7 @@ function createShopifyAuth() {
         try {
             // --- OAuth Callback ---
             if (req.path === '/auth/callback') {
+                console.log("🔥 Inside /auth/callback")
                 const session = await Shopify.Auth.validateAuthCallback(req, res, req.query);
 
                 // ✅ Store session in DB
