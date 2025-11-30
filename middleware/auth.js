@@ -72,6 +72,22 @@ export async function verifyRequest(req, res, next) {
 }
 
 /* --------------------------------------------
+   Verify Webhook Middleware
+--------------------------------------------- */
+export async function verifyWebhook(req, res, next) {
+    try {
+        const isValid = await Shopify.Webhooks.Registry.process(req, res);
+        if (!isValid) {
+            return res.status(401).json({ error: "Invalid webhook" });
+        }
+        next();
+    } catch (error) {
+        console.error("Webhook verification error:", error);
+        return res.status(401).json({ error: "Invalid webhook" });
+    }
+}
+
+/* --------------------------------------------
    Billing placeholder
 --------------------------------------------- */
 async function createBillingCharge(session) {
