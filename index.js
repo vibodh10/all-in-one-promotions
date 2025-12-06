@@ -13,6 +13,8 @@ import pgSession from 'connect-pg-simple';
 import pkg from 'pg';
 const { Pool } = pkg;
 import authRouter from './middleware/auth.js';
+import shopifyPkg from "@shopify/shopify-api";
+const { Shopify } = shopifyPkg;
 
 const PgSession = pgSession(session);
 
@@ -152,12 +154,18 @@ app.use((err, req, res, next) => {
     });
 });
 
-app.get("/debug-session", (req, res) => {
-    res.json({
-        query: req.query,
-        session: req.session,
-        cookies: req.cookies
-    });
+app.get("/debug-session", async (req, res) => {
+    try {
+        const shopifySession = await Shopify.Utils.loadCurrentSession(req, res, true);
+
+        res.json({
+            session: req.session,
+            shopifySession,
+        });
+    } catch (err) {
+        console.error("Debug session error:", err);
+        res.status(500).json({ error: "Failed to load session" });
+    }
 });
 
 app.listen(PORT, "0.0.0.0", () => {
