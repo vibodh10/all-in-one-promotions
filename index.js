@@ -2,7 +2,6 @@
 import '@shopify/shopify-api/adapters/node';
 import express from 'express';
 import { shopifyApi, LATEST_API_VERSION } from '@shopify/shopify-api';
-import { createShopifyAuth } from './middleware/auth.js';
 import offerRoutes from './routes/offers.js';
 import analyticsRoutes from './routes/analytics.js';
 import billingRoutes from './routes/billing.js';
