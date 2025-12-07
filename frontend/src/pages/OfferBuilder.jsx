@@ -16,7 +16,7 @@ import {
     Thumbnail,
 } from '@shopify/polaris';
 import { useAppBridge } from '@shopify/app-bridge-react';
-import { ResourcePicker } from '@shopify/app-bridge/actions/ResourcePicker';
+import ResourcePicker from '@shopify/app-bridge/actions/ResourcePicker';
 import { useNavigate } from 'react-router-dom';
 import { DeleteIcon } from '@shopify/polaris-icons';
 import axios from 'axios';
