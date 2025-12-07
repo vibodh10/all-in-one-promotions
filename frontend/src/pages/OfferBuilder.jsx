@@ -368,20 +368,6 @@ function OfferBuilder() {
         </Card>
     );
 
-    // ---- Debug Session Tester ---- //
-    const handleDebug = async () => {
-        try {
-            const res = await fetch("/debug-session", {
-                credentials: "include", // send cookies
-            });
-            const data = await res.json();
-            console.log("Debug session:", data);
-            alert(JSON.stringify(data, null, 2));
-        } catch (err) {
-            console.error("Debug failed:", err);
-        }
-    };
-
     // ---- UI ---- //
     return (
         <Page
@@ -423,12 +409,6 @@ function OfferBuilder() {
                                     )}
                                 </InlineStack>
                             </InlineStack>
-                        </Card>
-
-                        <Card>
-                            <Button onClick={handleDebug} primary>
-                                🔍 Test Debug Session
-                            </Button>
                         </Card>
                     </BlockStack>
                 </Layout.Section>
