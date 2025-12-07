@@ -20,6 +20,7 @@ const { Pool } = pkg;
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import authRouter from './middleware/auth.js';
+import { loadCurrentSession } from '@shopify/shopify-api';
 
 // ✅ 3. Setup DB connection *after dotenv*
 const pgPool = new Pool({
@@ -155,19 +156,20 @@ app.use((err, req, res, next) => {
 });
 
 // ✅ 15. Debug route — use same instance `shopify`
-app.get('/debug-session', async (req, res) => {
-    try {
-        const shopifySession = await shopify.utils.loadCurrentSession(req, res, true);
 
+app.get("/debug-session", async (req, res) => {
+    try {
+        const shopifySession = await loadCurrentSession(req, res, true);
         res.json({
             session: req.session,
             shopifySession,
         });
     } catch (err) {
-        console.error('Debug session error:', err);
-        res.status(500).json({ error: 'Failed to load session' });
+        console.error("Debug session error:", err);
+        res.status(500).json({ error: "Failed to load session" });
     }
 });
+
 
 // ✅ 16. Start server
 app.listen(PORT, '0.0.0.0', () => {

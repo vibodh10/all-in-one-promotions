@@ -1,324 +1,268 @@
 /**
  * Shopify Functions utility
- * Handles discount creation and management via Shopify Functions API
+ * Handles discount creation and management via Shopify REST API (v11+)
  */
 
-import ShopifyPkg from '@shopify/shopify-api';
-const { Shopify } = ShopifyPkg;
+import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
+
+// ✅ Initialize Shopify instance once
+const shopify = shopifyApi({
+  apiKey: process.env.SHOPIFY_API_KEY,
+  apiSecretKey: process.env.SHOPIFY_API_SECRET,
+  scopes: process.env.SCOPES.split(","),
+  hostName: process.env.HOST.replace(/https?:\/\//, ""),
+  apiVersion: LATEST_API_VERSION,
+  isEmbeddedApp: true,
+});
 
 /**
- * Create a discount for an offer
+ * Helper: create authenticated REST client for current session
  */
-async function createDiscount(session, offer) {
-  try {
-    const client = new shopify.clients
-.Rest(session.shop, session.accessToken);
+function restClient(session) {
+  return new shopify.rest.RestClient({ session });
+}
 
-    // Determine discount type and create accordingly
-    if (offer.type === 'quantity_break' || offer.type === 'volume_discount') {
+/* ==========================================================
+   1️⃣ Create Discount
+   ========================================================== */
+export async function createDiscount(session, offer) {
+  try {
+    const client = restClient(session);
+
+    if (offer.type === "quantity_break" || offer.type === "volume_discount") {
       return await createQuantityDiscount(client, offer);
-    } else if (offer.type === 'bundle') {
+    } else if (offer.type === "bundle") {
       return await createBundleDiscount(client, offer);
-    } else if (offer.type === 'cross_sell') {
+    } else if (offer.type === "cross_sell") {
       return await createCrossSellDiscount(client, offer);
     }
 
     return null;
   } catch (error) {
-    console.error('Error creating discount:', error);
+    console.error("Error creating discount:", error);
     throw error;
   }
 }
 
-/**
- * Create quantity-based discount
- */
+/* ==========================================================
+   2️⃣ Quantity-based Discount
+   ========================================================== */
 async function createQuantityDiscount(client, offer) {
   const discountCode = `SMARTOFFER_${offer.id}`;
 
-  // Create automatic discount using Functions
   const response = await client.post({
-    path: 'price_rules',
+    path: "price_rules",
     data: {
       price_rule: {
         title: offer.name,
-        target_type: 'line_item',
-        target_selection: 'entitled',
-        allocation_method: 'across',
-        value_type: offer.discountType === 'percentage' ? 'percentage' : 'fixed_amount',
-        value: offer.discountType === 'percentage' ? `-${offer.discountValue}` : `-${offer.discountValue}`,
-        customer_selection: 'all',
-        entitled_product_ids: offer.products,
-        starts_at: offer.schedule.startDate || new Date().toISOString(),
-        ends_at: offer.schedule.endDate,
+        target_type: "line_item",
+        target_selection: "entitled",
+        allocation_method: "across",
+        value_type: offer.discountType === "percentage" ? "percentage" : "fixed_amount",
+        value:
+            offer.discountType === "percentage"
+                ? `-${offer.discountValue}`
+                : `-${offer.discountValue}`,
+        customer_selection: "all",
+        entitled_product_ids: offer.products || [],
+        starts_at: offer.schedule?.startDate || new Date().toISOString(),
+        ends_at: offer.schedule?.endDate || null,
         prerequisite_quantity_range: {
-          greater_than_or_equal_to: offer.tiers && offer.tiers.length > 0 ? offer.tiers[0].quantity : 1
-        }
-      }
+          greater_than_or_equal_to:
+              offer.tiers?.length > 0 ? offer.tiers[0].quantity : 1,
+        },
+      },
     },
-    type: Shopify.DataType.JSON
+    type: "application/json",
   });
 
   const priceRule = response.body.price_rule;
 
-  // Create discount code
   await client.post({
     path: `price_rules/${priceRule.id}/discount_codes`,
-    data: {
-      discount_code: {
-        code: discountCode
-      }
-    },
-    type: Shopify.DataType.JSON
+    data: { discount_code: { code: discountCode } },
+    type: "application/json",
   });
 
-  return {
-    priceRuleId: priceRule.id,
-    discountCode
-  };
+  return { priceRuleId: priceRule.id, discountCode };
 }
 
-/**
- * Create bundle discount
- */
+/* ==========================================================
+   3️⃣ Bundle Discount
+   ========================================================== */
 async function createBundleDiscount(client, offer) {
   const discountCode = `BUNDLE_${offer.id}`;
 
   const response = await client.post({
-    path: 'price_rules',
+    path: "price_rules",
     data: {
       price_rule: {
         title: offer.name,
-        target_type: 'line_item',
-        target_selection: 'entitled',
-        allocation_method: 'across',
-        value_type: offer.discountType === 'percentage' ? 'percentage' : 'fixed_amount',
-        value: offer.discountType === 'percentage' ? `-${offer.discountValue}` : `-${offer.discountValue}`,
-        customer_selection: 'all',
-        entitled_product_ids: offer.products,
+        target_type: "line_item",
+        target_selection: "entitled",
+        allocation_method: "across",
+        value_type: offer.discountType === "percentage" ? "percentage" : "fixed_amount",
+        value:
+            offer.discountType === "percentage"
+                ? `-${offer.discountValue}`
+                : `-${offer.discountValue}`,
+        customer_selection: "all",
+        entitled_product_ids: offer.products || [],
         prerequisite_quantity_range: {
-          greater_than_or_equal_to: offer.bundleConfig.minItems
+          greater_than_or_equal_to: offer.bundleConfig?.minItems || 2,
         },
-        starts_at: offer.schedule.startDate || new Date().toISOString(),
-        ends_at: offer.schedule.endDate
-      }
+        starts_at: offer.schedule?.startDate || new Date().toISOString(),
+        ends_at: offer.schedule?.endDate || null,
+      },
     },
-    type: Shopify.DataType.JSON
+    type: "application/json",
   });
 
   const priceRule = response.body.price_rule;
 
   await client.post({
     path: `price_rules/${priceRule.id}/discount_codes`,
-    data: {
-      discount_code: {
-        code: discountCode
-      }
-    },
-    type: Shopify.DataType.JSON
+    data: { discount_code: { code: discountCode } },
+    type: "application/json",
   });
 
-  return {
-    priceRuleId: priceRule.id,
-    discountCode
-  };
+  return { priceRuleId: priceRule.id, discountCode };
 }
 
-/**
- * Create cross-sell discount
- */
+/* ==========================================================
+   4️⃣ Cross-sell Discount
+   ========================================================== */
 async function createCrossSellDiscount(client, offer) {
   const discountCode = `CROSSSELL_${offer.id}`;
 
   const response = await client.post({
-    path: 'price_rules',
+    path: "price_rules",
     data: {
       price_rule: {
         title: offer.name,
-        target_type: 'line_item',
-        target_selection: 'entitled',
-        allocation_method: 'across',
-        value_type: offer.discountType === 'percentage' ? 'percentage' : 'fixed_amount',
-        value: offer.discountType === 'percentage' ? `-${offer.discountValue}` : `-${offer.discountValue}`,
-        customer_selection: 'all',
-        entitled_product_ids: offer.products,
-        starts_at: offer.schedule.startDate || new Date().toISOString(),
-        ends_at: offer.schedule.endDate
-      }
+        target_type: "line_item",
+        target_selection: "entitled",
+        allocation_method: "across",
+        value_type: offer.discountType === "percentage" ? "percentage" : "fixed_amount",
+        value:
+            offer.discountType === "percentage"
+                ? `-${offer.discountValue}`
+                : `-${offer.discountValue}`,
+        customer_selection: "all",
+        entitled_product_ids: offer.products || [],
+        starts_at: offer.schedule?.startDate || new Date().toISOString(),
+        ends_at: offer.schedule?.endDate || null,
+      },
     },
-    type: Shopify.DataType.JSON
+    type: "application/json",
   });
 
   const priceRule = response.body.price_rule;
 
   await client.post({
     path: `price_rules/${priceRule.id}/discount_codes`,
-    data: {
-      discount_code: {
-        code: discountCode
-      }
-    },
-    type: Shopify.DataType.JSON
+    data: { discount_code: { code: discountCode } },
+    type: "application/json",
   });
 
-  return {
-    priceRuleId: priceRule.id,
-    discountCode
-  };
+  return { priceRuleId: priceRule.id, discountCode };
 }
 
-/**
- * Update existing discount
- */
-async function updateDiscount(session, offer) {
+/* ==========================================================
+   5️⃣ Update, Delete, Disable
+   ========================================================== */
+export async function updateDiscount(session, offer) {
   try {
-    // Delete existing discount
-    if (offer.shopifyDiscountId) {
-      await deleteDiscount(session, offer);
-    }
-
-    // Create new discount
+    if (offer.shopifyDiscountId) await deleteDiscount(session, offer);
     return await createDiscount(session, offer);
   } catch (error) {
-    console.error('Error updating discount:', error);
+    console.error("Error updating discount:", error);
     throw error;
   }
 }
 
-/**
- * Delete discount
- */
-async function deleteDiscount(session, offer) {
+export async function deleteDiscount(session, offer) {
   try {
     if (!offer.shopifyDiscountId) return;
-
-    const client = new shopify.clients
-.Rest(session.shop, session.accessToken);
-
-    await client.delete({
-      path: `price_rules/${offer.shopifyDiscountId}`
-    });
+    const client = restClient(session);
+    await client.delete({ path: `price_rules/${offer.shopifyDiscountId}` });
   } catch (error) {
-    console.error('Error deleting discount:', error);
-    // Don't throw - discount might already be deleted
+    console.error("Error deleting discount:", error);
   }
 }
 
-/**
- * Disable discount temporarily
- */
-async function disableDiscount(session, offer) {
+export async function disableDiscount(session, offer) {
   try {
     if (!offer.shopifyDiscountId) return;
-
-    const client = new shopify.clients
-.Rest(session.shop, session.accessToken);
-
-    // Set end date to now to disable
+    const client = restClient(session);
     await client.put({
       path: `price_rules/${offer.shopifyDiscountId}`,
-      data: {
-        price_rule: {
-          ends_at: new Date().toISOString()
-        }
-      },
-      type: Shopify.DataType.JSON
+      data: { price_rule: { ends_at: new Date().toISOString() } },
+      type: "application/json",
     });
   } catch (error) {
-    console.error('Error disabling discount:', error);
+    console.error("Error disabling discount:", error);
     throw error;
   }
 }
 
-/**
- * Get product details from Shopify
- */
-async function getProduct(session, productId) {
+/* ==========================================================
+   6️⃣ Product & Collection Helpers
+   ========================================================== */
+export async function getProduct(session, productId) {
   try {
-    const client = new shopify.clients
-.Rest(session.shop, session.accessToken);
-
-    const response = await client.get({
-      path: `products/${productId}`
-    });
-
+    const client = restClient(session);
+    const response = await client.get({ path: `products/${productId}` });
     return response.body.product;
   } catch (error) {
-    console.error('Error fetching product:', error);
+    console.error("Error fetching product:", error);
     return null;
   }
 }
 
-/**
- * Get collection details from Shopify
- */
-async function getCollection(session, collectionId) {
+export async function getCollection(session, collectionId) {
   try {
-    const client = new shopify.clients
-.Rest(session.shop, session.accessToken);
-
-    const response = await client.get({
-      path: `collections/${collectionId}`
-    });
-
+    const client = restClient(session);
+    const response = await client.get({ path: `collections/${collectionId}` });
     return response.body.collection;
   } catch (error) {
-    console.error('Error fetching collection:', error);
+    console.error("Error fetching collection:", error);
     return null;
   }
 }
 
-/**
- * Get products from collection
- */
-async function getProductsFromCollection(session, collectionId) {
+export async function getProductsFromCollection(session, collectionId) {
   try {
-    const client = new shopify.clients
-.Rest(session.shop, session.accessToken);
-
-    const response = await client.get({
-      path: `collections/${collectionId}/products`
-    });
-
+    const client = restClient(session);
+    const response = await client.get({ path: `collections/${collectionId}/products` });
     return response.body.products;
   } catch (error) {
-    console.error('Error fetching collection products:', error);
+    console.error("Error fetching collection products:", error);
     return [];
   }
 }
 
-/**
- * Apply discount at checkout via Shopify Functions
- */
-async function applyCheckoutDiscount(session, offer, cartItems) {
+/* ==========================================================
+   7️⃣ Checkout Discount (Local Calculation)
+   ========================================================== */
+export async function applyCheckoutDiscount(session, offer, cartItems) {
   try {
     const discount = offer.calculateDiscount(
-      cartItems.reduce((sum, item) => sum + item.quantity, 0),
-      cartItems
+        cartItems.reduce((sum, item) => sum + item.quantity, 0),
+        cartItems
     );
 
     if (discount > 0) {
       return {
         type: offer.discountType,
         value: discount,
-        code: `SMARTOFFER_${offer.id}`
+        code: `SMARTOFFER_${offer.id}`,
       };
     }
 
     return null;
   } catch (error) {
-    console.error('Error applying checkout discount:', error);
+    console.error("Error applying checkout discount:", error);
     return null;
   }
 }
-
-export {
-  createDiscount,
-  updateDiscount,
-  deleteDiscount,
-  disableDiscount,
-  getProduct,
-  getCollection,
-  getProductsFromCollection,
-  applyCheckoutDiscount
-};
