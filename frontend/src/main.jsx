@@ -1,25 +1,30 @@
-import { AppBridgeProvider } from '@shopify/app-bridge-react';
-import { BrowserRouter } from 'react-router-dom';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import { AppBridgeProvider } from '@shopify/app-bridge-react';
+import { AppProvider } from '@shopify/polaris';
+import '@shopify/polaris/build/esm/styles.css';
 import App from './App';
 
-// ✅ Get the host parameter from the Shopify Admin URL
+// Get host parameter from Shopify Admin URL
 const host = new URLSearchParams(window.location.search).get('host');
 
-// ✅ Configure App Bridge
+// Configure App Bridge
 const appBridgeConfig = {
-    apiKey: import.meta.env.VITE_SHOPIFY_API_KEY, // ✅ correct for Vite
+    apiKey: import.meta.env.VITE_SHOPIFY_API_KEY,
     host,
     forceRedirect: true,
 };
 
-// ✅ Render app inside AppBridgeProvider
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
-    <BrowserRouter>
-        <AppBridgeProvider config={appBridgeConfig}>
-            <App />
-        </AppBridgeProvider>
-    </BrowserRouter>
+// Render app
+ReactDOM.createRoot(document.getElementById('root')).render(
+    <React.StrictMode>
+        <BrowserRouter>
+            <AppBridgeProvider config={appBridgeConfig}>
+                <AppProvider i18n={{}}>
+                    <App />
+                </AppProvider>
+            </AppBridgeProvider>
+        </BrowserRouter>
+    </React.StrictMode>
 );
