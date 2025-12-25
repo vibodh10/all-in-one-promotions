@@ -1,16 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { AppProvider, Frame, Spinner, Page } from "@shopify/polaris";
+import "@shopify/polaris/build/esm/styles.css"; // ✅ RESTORE POLARIS STYLES
 import enTranslations from "@shopify/polaris/locales/en.json";
 import { Provider as AppBridgeProvider } from "@shopify/app-bridge-react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-// ✅ You already have OfferBuilder.jsx — keep using that
-import OfferBuilder from "./pages/OfferBuilder.jsx";
+import OfferBuilder from "./pages/OfferBuilder.jsx"; // your main page
 
 export default function App() {
     const [config, setConfig] = useState(null);
 
-    // Shopify host handling (so window.shopify will exist)
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const host = params.get("host");
@@ -21,12 +20,9 @@ export default function App() {
                 host,
                 forceRedirect: true,
             });
-        } else {
-            console.warn("⚠️ Missing host param — embedded app may not load correctly");
         }
     }, []);
 
-    // Show spinner until App Bridge config loads
     if (!config) {
         return (
             <AppProvider i18n={enTranslations}>
@@ -41,7 +37,6 @@ export default function App() {
         );
     }
 
-    // Main app wrapper
     return (
         <AppBridgeProvider config={config}>
             <AppProvider i18n={enTranslations}>
