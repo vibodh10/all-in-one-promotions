@@ -7,7 +7,6 @@ dotenv.config();
 // ✅ 2. Imports
 import '@shopify/shopify-api/adapters/node';
 import express from 'express';
-import { shopifyApi, LATEST_API_VERSION } from '@shopify/shopify-api';
 import offerRoutes from './routes/offers.js';
 import analyticsRoutes from './routes/analytics.js';
 import billingRoutes from './routes/billing.js';
@@ -16,11 +15,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import pgSession from 'connect-pg-simple';
 import pkg from 'pg';
-const { Pool } = pkg;
+import pkg2 from '@shopify/shopify-api';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import authRouter from './middleware/auth.js';
-import { loadCurrentSession } from '@shopify/shopify-api';
+
+const { Pool } = pkg;
+const { shopifyApi, LATEST_API_VERSION, loadCurrentSession } = pkg;
 
 // ✅ 3. Setup DB connection *after dotenv*
 const pgPool = new Pool({
