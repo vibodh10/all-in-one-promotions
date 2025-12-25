@@ -1,40 +1,59 @@
-import '@shopify/polaris/build/esm/styles.css';
-import React from 'react';
-import { AppProvider, Frame, Spinner } from '@shopify/polaris';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import enTranslations from '@shopify/polaris/locales/en.json';
-import Dashboard from './pages/Dashboard.jsx';
-import OfferBuilder from './pages/OfferBuilder.jsx';
+import React, { useEffect, useState } from "react";
+import { AppProvider, Frame, Spinner, Page } from "@shopify/polaris";
+import enTranslations from "@shopify/polaris/locales/en.json";
+import { Provider as AppBridgeProvider } from "@shopify/app-bridge-react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-function App() {
-    // Optional: if you want to show spinner while waiting for Shopify init
-    const [ready, setReady] = React.useState(false);
+// ✅ You already have OfferBuilder.jsx — keep using that
+import OfferBuilder from "./pages/OfferBuilder.jsx";
 
-    React.useEffect(() => {
+export default function App() {
+    const [config, setConfig] = useState(null);
+
+    // Shopify host handling (so window.shopify will exist)
+    useEffect(() => {
         const params = new URLSearchParams(window.location.search);
-        if (params.get('host')) setReady(true);
+        const host = params.get("host");
+
+        if (host) {
+            setConfig({
+                apiKey: import.meta.env.VITE_SHOPIFY_API_KEY,
+                host,
+                forceRedirect: true,
+            });
+        } else {
+            console.warn("⚠️ Missing host param — embedded app may not load correctly");
+        }
     }, []);
 
-    if (!ready) {
+    // Show spinner until App Bridge config loads
+    if (!config) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                <Spinner accessibilityLabel="Loading App" size="large" />
-            </div>
+            <AppProvider i18n={enTranslations}>
+                <Frame>
+                    <Page>
+                        <div style={{ display: "flex", justifyContent: "center", padding: "40px" }}>
+                            <Spinner accessibilityLabel="Loading app" size="large" />
+                        </div>
+                    </Page>
+                </Frame>
+            </AppProvider>
         );
     }
 
+    // Main app wrapper
     return (
-        <AppProvider i18n={enTranslations}>
-            <BrowserRouter basename="/frontend">
-                <Frame>
-                    <Routes>
-                        <Route path="/" element={<Dashboard />} />
-                        <Route path="/offers/new" element={<OfferBuilder />} />
-                    </Routes>
-                </Frame>
-            </BrowserRouter>
-        </AppProvider>
+        <AppBridgeProvider config={config}>
+            <AppProvider i18n={enTranslations}>
+                <BrowserRouter basename="/frontend">
+                    <Frame>
+                        <Routes>
+                            <Route path="/" element={<OfferBuilder />} />
+                            <Route path="/offers/new" element={<OfferBuilder />} />
+                        </Routes>
+                    </Frame>
+                </BrowserRouter>
+            </AppProvider>
+        </AppBridgeProvider>
     );
 }
-
-export default App;

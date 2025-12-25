@@ -16,7 +16,7 @@ import {
     Thumbnail,
 } from '@shopify/polaris';
 import { useAppBridge } from '@shopify/app-bridge-react';
-import { ResourcePicker } from '@shopify/app-bridge/actions/ResourcePicker';
+import { ResourcePicker } from '@shopify/app-bridge/actions';
 import { useNavigate } from 'react-router-dom';
 import { DeleteIcon } from '@shopify/polaris-icons';
 import axios from 'axios';
@@ -95,18 +95,14 @@ function OfferBuilder() {
         }));
 
     // ---- Product Picker ---- //
-    const openProductPicker = () => {
-        console.log("AppBridge instance:", app);
-        console.log("window.shopify:", window.shopify);
-        console.log("Host param:", new URLSearchParams(window.location.search).get('host'));
+    const openProductPicker = useCallback(() => {
+        const app = useAppBridge();
+        if (!app) {
+            console.error("App Bridge not ready yet");
+            return;
+        }
 
         try {
-            if (!app) {
-                console.error('App Bridge not initialized');
-                setErrors(['Shopify App Bridge not ready. Please refresh and try again.']);
-                return;
-            }
-
             const picker = ResourcePicker.create(app, {
                 resourceType: ResourcePicker.ResourceType.Product,
                 options: { selectMultiple: true },
@@ -122,16 +118,12 @@ function OfferBuilder() {
                 setErrors([]);
             });
 
-            picker.subscribe(ResourcePicker.Action.CANCEL, () => {
-                console.log('Product selection canceled');
-            });
-
             picker.dispatch(ResourcePicker.Action.OPEN);
         } catch (err) {
-            console.error('Error opening product picker:', err);
-            setErrors(['Failed to select products. Please try again.']);
+            console.error("Error opening picker:", err);
+            setErrors(["Failed to select products. Please try again."]);
         }
-    };
+    }, [app]);
 
     const openCollectionPicker = () => {
         console.log("AppBridge instance:", app);
