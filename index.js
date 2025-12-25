@@ -15,13 +15,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import pgSession from 'connect-pg-simple';
 import pkg from 'pg';
-import pkg2 from '@shopify/shopify-api';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import authRouter from './middleware/auth.js';
+import Shopify from '@shopify/shopify-api';
+
+const { shopifyApi, LATEST_API_VERSION, loadCurrentSession } = Shopify;
 
 const { Pool } = pkg;
-const { shopifyApi, LATEST_API_VERSION, loadCurrentSession } = pkg;
 
 // ✅ 3. Setup DB connection *after dotenv*
 const pgPool = new Pool({

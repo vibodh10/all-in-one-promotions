@@ -1,9 +1,10 @@
 // middleware/auth.js
 import express from "express";
-import pkg from "@shopify/shopify-api";
-const { shopifyApi, LATEST_API_VERSION, loadCurrentSession } = pkg;
 import * as billing from "../routes/billing.js";
 import database from "../utils/database.js";
+import Shopify from '@shopify/shopify-api';
+
+const { shopifyApi, LATEST_API_VERSION, loadCurrentSession } = Shopify;
 
 const router = express.Router();
 
