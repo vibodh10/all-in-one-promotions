@@ -1,6 +1,7 @@
 // middleware/auth.js
 import express from "express";
-import { shopifyApi, LATEST_API_VERSION, loadCurrentSession } from "@shopify/shopify-api";
+import pkg from "@shopify/shopify-api";
+const { shopifyApi, LATEST_API_VERSION, loadCurrentSession } = pkg;
 import * as billing from "../routes/billing.js";
 import database from "../utils/database.js";
 
