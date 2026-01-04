@@ -42,10 +42,12 @@ export default function App() {
             <AppProvider i18n={enTranslations}>
                 <BrowserRouter basename="/frontend">
                     <Frame>
-                        <Routes>
-                            <Route path="/" element={<OfferBuilder />} />
-                            <Route path="/offers/new" element={<OfferBuilder />} />
-                        </Routes>
+                        <Page>
+                            <Routes>
+                                <Route path="/" element={<OfferBuilder />} />
+                                <Route path="/offers/new" element={<OfferBuilder />} />
+                            </Routes>
+                        </Page>
                     </Frame>
                 </BrowserRouter>
             </AppProvider>
