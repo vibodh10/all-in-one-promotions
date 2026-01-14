@@ -15,11 +15,12 @@ import {
     Banner,
     Thumbnail,
 } from '@shopify/polaris';
-import { useAppBridge } from '@shopify/app-bridge-react';
 import { ResourcePicker } from '@shopify/app-bridge/actions';
 import { useNavigate } from 'react-router-dom';
 import { DeleteIcon } from '@shopify/polaris-icons';
 import axios from 'axios';
+
+import { useAppBridge } from '@shopify/app-bridge-react';
 
 function OfferBuilder() {
     const navigate = useNavigate();
@@ -105,7 +106,10 @@ function OfferBuilder() {
         try {
             const picker = ResourcePicker.create(app, {
                 resourceType: ResourcePicker.ResourceType.Product,
-                options: { selectMultiple: true },
+                options: {
+                    selectMultiple: true,
+                    app, // ✅ Ensure context is passed in for embedded apps
+                },
             });
 
             picker.subscribe(ResourcePicker.Action.SELECT, (payload) => {
@@ -139,7 +143,10 @@ function OfferBuilder() {
 
             const picker = ResourcePicker.create(app, {
                 resourceType: ResourcePicker.ResourceType.Collection,
-                options: { selectMultiple: true },
+                options: {
+                    selectMultiple: true,
+                    app, // ✅ Add this line here too
+                },
             });
 
             picker.subscribe(ResourcePicker.Action.SELECT, (payload) => {
