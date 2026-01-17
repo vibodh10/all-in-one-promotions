@@ -26,6 +26,8 @@ function OfferBuilder() {
     const navigate = useNavigate();
     const app = useAppBridge();
 
+    window.appBridge = app; // ✅ Ensures picker can find it
+
     const [step, setStep] = useState(1);
     const [errors, setErrors] = useState([]);
 

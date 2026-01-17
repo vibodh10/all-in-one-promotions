@@ -1,26 +1,21 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import App from "./App";
-import { Provider as AppBridgeProvider } from "@shopify/app-bridge-react";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { Provider as AppBridgeProvider } from '@shopify/app-bridge-react';
+import { BrowserRouter } from 'react-router-dom';
+import App from './App.jsx';
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
+const host = new URLSearchParams(window.location.search).get('host');
 
-const params = new URLSearchParams(window.location.search);
-const host = params.get("host");
+const appBridgeConfig = {
+    apiKey: import.meta.env.VITE_SHOPIFY_API_KEY,
+    host,
+    forceRedirect: true,
+};
 
-if (host) {
-    const config = {
-        apiKey: import.meta.env.VITE_SHOPIFY_API_KEY,
-        host,
-        forceRedirect: true,
-    };
-
-    root.render(
-        <AppBridgeProvider config={config}>
+ReactDOM.createRoot(document.getElementById('root')).render(
+    <AppBridgeProvider config={appBridgeConfig}>
+        <BrowserRouter>
             <App />
-        </AppBridgeProvider>
-    );
-} else {
-    // Fallback if host missing (for local dev or direct open)
-    root.render(<App />);
-}
+        </BrowserRouter>
+    </AppBridgeProvider>
+);
