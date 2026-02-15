@@ -1,4 +1,7 @@
 // routes/billing.js
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from "express";
 import { verifyRequest } from "../middleware/auth.js";
 import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
@@ -6,11 +9,13 @@ import database from "../utils/database.js";
 
 const router = express.Router();
 
+console.log("SHOPIFY_SCOPES:", process.env.SHOPIFY_SCOPES);
+
 // ✅ Create Shopify instance once
 const shopify = shopifyApi({
-    apiKey: process.env.SHOPIFY_API_KEY,
+    apiKey: process.env.VITE_SHOPIFY_API_KEY,
     apiSecretKey: process.env.SHOPIFY_API_SECRET,
-    scopes: process.env.SCOPES.split(","),
+    scopes: process.env.SHOPIFY_SCOPES.split(","),
     hostName: process.env.HOST.replace(/https?:\/\//, ""),
     apiVersion: LATEST_API_VERSION,
     isEmbeddedApp: true,

@@ -99,7 +99,6 @@ function OfferBuilder() {
 
     // ---- Product Picker ---- //
     const openProductPicker = useCallback(() => {
-        const app = useAppBridge();
         if (!app) {
             console.error("App Bridge not ready yet");
             return;
@@ -110,7 +109,6 @@ function OfferBuilder() {
                 resourceType: ResourcePicker.ResourceType.Product,
                 options: {
                     selectMultiple: true,
-                    app, // ✅ Ensure context is passed in for embedded apps
                 },
             });
 

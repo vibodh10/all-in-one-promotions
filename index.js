@@ -64,9 +64,9 @@ app.use((req, res, next) => {
 
 // ✅ 7. Initialize Shopify
 const shopify = shopifyApi({
-    apiKey: process.env.SHOPIFY_API_KEY,
+    apiKey: process.env.VITE_SHOPIFY_API_KEY,
     apiSecretKey: process.env.SHOPIFY_API_SECRET,
-    scopes: process.env.SCOPES.split(','),
+    scopes: process.env.SHOPIFY_SCOPES.split(','),
     hostName: process.env.HOST.replace(/https?:\/\//, ''),
     apiVersion: LATEST_API_VERSION,
     isEmbeddedApp: true,
@@ -121,11 +121,29 @@ app.use('/api/webhooks', webhookRoutes);
 // ✅ 13. Frontend serving
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const frontendPath = path.join(__dirname, 'frontend', 'dist');
 
-app.use('/frontend', express.static(frontendPath));
+const isDev = process.env.NODE_ENV !== "production";
 
-// --- Handle root requests ---
+if (isDev) {
+    console.log("🔥 Running in DEVELOPMENT mode — proxying to Vite");
+
+    app.use('/frontend', (req, res) => {
+        res.redirect(`http://localhost:5173${req.originalUrl.replace('/frontend', '')}`);
+    });
+
+} else {
+    console.log("🚀 Running in PRODUCTION mode — serving built frontend");
+
+    const frontendPath = path.join(__dirname, 'frontend', 'dist');
+
+    app.use('/frontend', express.static(frontendPath));
+
+    app.get('/frontend/*', (req, res) => {
+        res.sendFile(path.join(frontendPath, 'index.html'));
+    });
+}
+
+// Root route stays same
 app.get('/', (req, res) => {
     const shop = req.query.shop || req.session.shop;
     const host = req.query.host || req.session.host;
@@ -139,11 +157,6 @@ app.get('/', (req, res) => {
     req.session.host = host;
 
     return res.redirect(302, `/frontend/?shop=${shop}&host=${host}`);
-});
-
-// --- Serve React/Vite frontend ---
-app.get('/frontend/*', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // ✅ 14. Error handler

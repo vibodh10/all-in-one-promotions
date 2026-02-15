@@ -7,9 +7,7 @@ export default defineConfig({
     optimizeDeps: {
         include: [
             '@shopify/app-bridge-react',
-            '@shopify/app-bridge',
-            '@shopify/app-bridge-utils',
-            '@shopify/app-bridge/actions'
+            '@shopify/app-bridge'
         ],
     },
     build: {

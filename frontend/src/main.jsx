@@ -5,10 +5,12 @@ import App from './App.jsx';
 
 const host = new URLSearchParams(window.location.search).get('host');
 
+const isDev = window.location.hostname === "localhost";
+
 const appBridgeConfig = {
     apiKey: import.meta.env.VITE_SHOPIFY_API_KEY,
     host,
-    forceRedirect: true,
+    forceRedirect: !isDev,
 };
 
 ReactDOM.createRoot(document.getElementById('root')).render(
