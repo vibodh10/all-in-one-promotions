@@ -241,7 +241,9 @@ function OfferBuilder() {
     const saveOffer = async (publish = false) => {
         try {
             const payload = { ...offerData, status: publish ? 'active' : 'draft' };
-            const { data } = await axios.post('/api/offers', payload);
+            const { data } = await axios.post('/api/offers', payload, {
+                withCredentials: true
+            });
             if (data.success) navigate('/offers');
         } catch (error) {
             console.error("SAVE OFFER ERROR:", error);
