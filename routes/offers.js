@@ -15,7 +15,7 @@ router.use(verifyRequest);
  */
 router.get('/', async (req, res) => {
   try {
-    const shopId = req.session.shop;
+    const shopId = req.query.shop;
     const { status, type } = req.query;
 
     const filters = { shopId };
@@ -45,7 +45,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const shopId = req.session.shop;
+    const shopId = req.query.shop;
 
     const offer = await database.getOfferById(id, shopId);
 
@@ -78,7 +78,7 @@ router.post('/', verifyRequest, async (req, res) => {
   console.log("QUERY:", req.query);
 
   try {
-    const shopId = req.session.shop;
+    const shopId = req.query.shop;
     const offerData = {
       ...req.body,
       shopId
@@ -124,7 +124,7 @@ router.post('/', verifyRequest, async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const shopId = req.session.shop;
+    const shopId = req.query.shop;
     const updates = req.body;
 
     // Get existing offer
@@ -181,7 +181,7 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const shopId = req.session.shop;
+    const shopId = req.query.shop;
 
     const offer = await database.getOfferById(id, shopId);
     if (!offer) {
@@ -217,7 +217,7 @@ router.delete('/:id', async (req, res) => {
 router.post('/:id/duplicate', async (req, res) => {
   try {
     const { id } = req.params;
-    const shopId = req.session.shop;
+    const shopId = req.query.shop;
 
     const originalOffer = await database.getOfferById(id, shopId);
     if (!originalOffer) {
@@ -262,7 +262,7 @@ router.patch('/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    const shopId = req.session.shop;
+    const shopId = req.query.shop;
 
     const validStatuses = ['draft', 'active', 'paused', 'scheduled'];
     if (!validStatuses.includes(status)) {
@@ -315,7 +315,7 @@ router.patch('/:id/status', async (req, res) => {
 router.get('/:id/preview', async (req, res) => {
   try {
     const { id } = req.params;
-    const shopId = req.session.shop;
+    const shopId = req.query.shop;
 
     const offer = await database.getOfferById(id, shopId);
     if (!offer) {
