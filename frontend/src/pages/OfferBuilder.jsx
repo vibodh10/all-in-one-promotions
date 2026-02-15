@@ -1,4 +1,4 @@
-import { getSessionToken } from "@shopify/app-bridge-utils";
+import {authenticatedFetch, getSessionToken} from "@shopify/app-bridge-utils";
 import React, { useState, useCallback } from 'react';
 import {
     Page,
@@ -26,6 +26,7 @@ import { useAppBridge } from '@shopify/app-bridge-react';
 function OfferBuilder() {
     const navigate = useNavigate();
     const app = useAppBridge();
+    const fetchFunction = authenticatedFetch(app);
 
     window.appBridge = app; // ✅ Ensures picker can find it
 
@@ -241,37 +242,22 @@ function OfferBuilder() {
     // ---- Save Offer ---- //
     const saveOffer = async (publish = false) => {
         try {
-            const payload = {
-                ...offerData,
-                status: publish ? 'active' : 'draft'
-            };
+            const payload = { ...offerData, status: publish ? 'active' : 'draft' };
 
-            // 🔥 Get Shopify session token
-            const token = await getSessionToken(app);
+            const response = await fetchFunction('/api/offers', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
 
-            const { data } = await axios.post(
-                '/api/offers',
-                payload,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    withCredentials: true,
-                }
-            );
+            const data = await response.json();
 
             if (data.success) navigate('/offers');
 
         } catch (error) {
             console.error("SAVE OFFER ERROR:", error);
-            console.error("Response:", error?.response?.data);
-
-            setErrors([
-                error?.response?.data?.error?.message ||
-                error.message ||
-                'Failed to save offer. Try again.'
-            ]);
         }
     };
 
