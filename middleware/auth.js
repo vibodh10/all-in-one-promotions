@@ -1,12 +1,15 @@
 // middleware/auth.js
 import express from "express";
-const { shopifyApi, LATEST_API_VERSION } = Shopify;
+import "@shopify/shopify-api/adapters/node";
+import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
 
 const router = express.Router();
 
-// ✅ Initialize Shopify instance once
+/* --------------------------------------------
+   1️⃣ Initialize Shopify instance (ONLY once)
+--------------------------------------------- */
 const shopify = shopifyApi({
-    apiKey: process.env.SHOPIFY_API_KEY,
+    apiKey: process.env.VITE_SHOPIFY_API_KEY,
     apiSecretKey: process.env.SHOPIFY_API_SECRET,
     scopes: process.env.SHOPIFY_SCOPES.split(","),
     hostName: process.env.HOST.replace(/https?:\/\//, ""),
@@ -15,14 +18,14 @@ const shopify = shopifyApi({
 });
 
 /* --------------------------------------------
-   1️⃣ Begin OAuth
+   2️⃣ Begin OAuth
 --------------------------------------------- */
 router.get("/auth", async (req, res) => {
     try {
         const shop = req.query.shop;
         if (!shop) return res.status(400).send("Missing shop param");
 
-        const redirectUrl = await shopify.auth.begin({
+        await shopify.auth.begin({
             shop,
             callbackPath: "/auth/callback",
             isOnline: false,
@@ -30,7 +33,6 @@ router.get("/auth", async (req, res) => {
             rawResponse: res,
         });
 
-        return res.redirect(redirectUrl);
     } catch (err) {
         console.error("Auth start error:", err);
         return res.status(500).json({ error: "Failed to start OAuth" });
@@ -38,28 +40,28 @@ router.get("/auth", async (req, res) => {
 });
 
 /* --------------------------------------------
-   2️⃣ OAuth Callback
+   3️⃣ OAuth Callback
 --------------------------------------------- */
 router.get("/auth/callback", async (req, res) => {
-    console.log("🔥 Inside /auth/callback");
     try {
-        const session = await shopify.auth.callback({
+        const { session } = await shopify.auth.callback({
             rawRequest: req,
             rawResponse: res,
         });
 
-        // ✅ Persist essential data
+        // Store only what we need in express-session
         req.session.shop = session.shop;
-        req.session.host = req.query.host || session.host;
+        req.session.accessToken = session.accessToken;
+        req.session.host = req.query.host;
+
         await new Promise((resolve, reject) =>
             req.session.save(err => (err ? reject(err) : resolve()))
         );
 
-        console.log("✅ Saved session:", req.session);
+        return res.redirect(
+            `/frontend/?shop=${session.shop}&host=${req.session.host}`
+        );
 
-        await createBillingCharge(session);
-
-        return res.redirect(`/frontend/?shop=${session.shop}&host=${req.session.host}`);
     } catch (err) {
         console.error("Auth callback error:", err);
         return res.status(500).json({ error: "OAuth callback failed" });
@@ -67,50 +69,34 @@ router.get("/auth/callback", async (req, res) => {
 });
 
 /* --------------------------------------------
-   3️⃣ Verify Request Middleware
+   4️⃣ Verify Request (USED BY API ROUTES)
 --------------------------------------------- */
-export async function verifyRequest(req, res, next) {
-    try {
-        if (!req.session || !req.session.shop) {
-            console.warn("❌ No session found");
-            return res.status(401).json({ error: "Unauthorized" });
-        }
-
-        next();
-
-    } catch (error) {
-        console.error("Verification error:", error);
+export function verifyRequest(req, res, next) {
+    if (!req.session || !req.session.shop || !req.session.accessToken) {
+        console.warn("❌ No valid session found");
         return res.status(401).json({ error: "Unauthorized" });
     }
+
+    next();
 }
 
 /* --------------------------------------------
-   4️⃣ Verify Webhook Middleware
+   5️⃣ Verify Webhook
 --------------------------------------------- */
 export async function verifyWebhook(req, res, next) {
     try {
-        const result = await shopify.webhooks.process({
+        await shopify.webhooks.process({
             rawBody: req.body,
             rawRequest: req,
             rawResponse: res,
         });
 
-        if (!result) {
-            return res.status(401).json({ error: "Invalid webhook" });
-        }
-
         next();
+
     } catch (error) {
         console.error("Webhook verification error:", error);
         return res.status(401).json({ error: "Invalid webhook" });
     }
-}
-
-/* --------------------------------------------
-   5️⃣ Billing placeholder
---------------------------------------------- */
-async function createBillingCharge(session) {
-    // TODO: implement billing later
 }
 
 /* --------------------------------------------
