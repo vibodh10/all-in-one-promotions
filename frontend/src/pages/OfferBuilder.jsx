@@ -30,6 +30,9 @@ function OfferBuilder() {
 
     window.appBridge = app; // ✅ Ensures picker can find it
 
+    const params = new URLSearchParams(window.location.search);
+    const shop = params.get('shop');
+
     const [step, setStep] = useState(1);
     const [errors, setErrors] = useState([]);
 
@@ -242,22 +245,34 @@ function OfferBuilder() {
     // ---- Save Offer ---- //
     const saveOffer = async (publish = false) => {
         try {
-            const payload = { ...offerData, status: publish ? 'active' : 'draft' };
+            const payload = { ...offerData, status: publish ? "active" : "draft" };
 
-            const response = await fetchFunction('/api/offers', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+            const params = new URLSearchParams(window.location.search);
+            const shop = params.get("shop");
+            const host = params.get("host");
+
+            if (!shop || !host) {
+                setErrors(["Missing shop/host in URL. Refresh the app from Shopify admin."]);
+                return;
+            }
+
+            const response = await fetchFunction(`/api/offers?shop=${encodeURIComponent(shop)}&host=${encodeURIComponent(host)}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
 
             const data = await response.json();
 
-            if (data.success) navigate('/offers');
+            if (!response.ok) {
+                setErrors([data?.error || data?.message || "Failed to save offer."]);
+                return;
+            }
 
+            if (data.success) navigate("/offers");
         } catch (error) {
             console.error("SAVE OFFER ERROR:", error);
+            setErrors(["Failed to save offer. Try again."]);
         }
     };
 
