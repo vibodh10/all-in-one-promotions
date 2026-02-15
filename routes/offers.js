@@ -74,6 +74,9 @@ router.get('/:id', async (req, res) => {
  * Create a new offer
  */
 router.post('/', verifyRequest, async (req, res) => {
+  console.log("BODY RECEIVED:", req.body);
+  console.log("QUERY:", req.query);
+
   try {
     const shopId = req.session.shop;
     const offerData = {
