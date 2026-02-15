@@ -114,7 +114,7 @@ app.get('/health', (req, res) => {
 });
 
 // ✅ 12. Routes (auth before everything else)
-app.use(authRouter(shopify));
+app.use(authRouter);
 app.use('/api/offers', offerRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/billing', billingRoutes);
