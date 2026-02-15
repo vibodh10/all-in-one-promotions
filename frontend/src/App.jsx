@@ -34,19 +34,17 @@ export default function App() {
     }
 
     return (
-        <AppBridgeProvider config={config}>
-            <AppProvider i18n={enTranslations}>
-                <BrowserRouter basename="/frontend">
-                    <Frame>
-                        <Page>
-                            <Routes>
-                                <Route path="/" element={<OfferBuilder />} />
-                                <Route path="/offers/new" element={<OfferBuilder />} />
-                            </Routes>
-                        </Page>
-                    </Frame>
-                </BrowserRouter>
-            </AppProvider>
-        </AppBridgeProvider>
+        <AppProvider i18n={enTranslations}>
+            <BrowserRouter basename="/frontend">
+                <Frame>
+                    <Page>
+                        <Routes>
+                            <Route path="/" element={<OfferBuilder />} />
+                            <Route path="/offers/new" element={<OfferBuilder />} />
+                        </Routes>
+                    </Page>
+                </Frame>
+            </BrowserRouter>
+        </AppProvider>
     );
 }

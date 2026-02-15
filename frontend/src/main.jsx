@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Provider as AppBridgeProvider } from '@shopify/app-bridge-react';
-import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
 
 const host = new URLSearchParams(window.location.search).get('host');
@@ -14,8 +13,6 @@ const appBridgeConfig = {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <AppBridgeProvider config={appBridgeConfig}>
-        <BrowserRouter>
-            <App />
-        </BrowserRouter>
+        <App />
     </AppBridgeProvider>
 );
