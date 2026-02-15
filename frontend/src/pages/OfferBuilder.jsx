@@ -243,8 +243,14 @@ function OfferBuilder() {
             const payload = { ...offerData, status: publish ? 'active' : 'draft' };
             const { data } = await axios.post('/api/offers', payload);
             if (data.success) navigate('/offers');
-        } catch {
-            setErrors(['Failed to save offer. Try again.']);
+        } catch (error) {
+            console.error("SAVE OFFER ERROR:", error);
+            console.error("Response:", error?.response?.data);
+            setErrors([
+                error?.response?.data?.error?.message ||
+                error.message ||
+                'Failed to save offer. Try again.'
+            ]);
         }
     };
 
