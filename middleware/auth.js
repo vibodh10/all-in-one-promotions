@@ -72,6 +72,8 @@ router.get("/auth/callback", async (req, res) => {
    4️⃣ Verify Request (USED BY API ROUTES)
 --------------------------------------------- */
 export function verifyRequest(req, res, next) {
+    console.log("SESSION CHECK:", req.session);
+
     if (!req.session || !req.session.shop || !req.session.accessToken) {
         console.warn("❌ No valid session found");
         return res.status(401).json({ error: "Unauthorized" });

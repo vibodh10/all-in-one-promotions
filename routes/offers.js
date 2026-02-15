@@ -73,7 +73,7 @@ router.get('/:id', async (req, res) => {
  * POST /api/offers
  * Create a new offer
  */
-router.post('/', async (req, res) => {
+router.post('/', verifyRequest, async (req, res) => {
   try {
     const shopId = req.session.shop;
     const offerData = {
