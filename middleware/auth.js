@@ -44,23 +44,22 @@ router.get("/auth", async (req, res) => {
 --------------------------------------------- */
 router.get("/auth/callback", async (req, res) => {
     try {
-        const { session } = await shopify.auth.callback({
+        const session = await shopify.auth.callback({
             rawRequest: req,
             rawResponse: res,
         });
 
-        // Store only what we need in express-session
+        // 🔥 Store EVERYTHING needed
         req.session.shop = session.shop;
         req.session.accessToken = session.accessToken;
-        req.session.host = req.query.host;
+        req.session.scope = session.scope;
+        req.session.host = req.query.host || session.host;
 
         await new Promise((resolve, reject) =>
             req.session.save(err => (err ? reject(err) : resolve()))
         );
 
-        return res.redirect(
-            `/frontend/?shop=${session.shop}&host=${req.session.host}`
-        );
+        return res.redirect(`/frontend/?shop=${session.shop}&host=${req.session.host}`);
 
     } catch (err) {
         console.error("Auth callback error:", err);
@@ -71,15 +70,24 @@ router.get("/auth/callback", async (req, res) => {
 /* --------------------------------------------
    4️⃣ Verify Request (USED BY API ROUTES)
 --------------------------------------------- */
-export function verifyRequest(req, res, next) {
-    console.log("SESSION CHECK:", req.session);
+export async function verifyRequest(req, res, next) {
+    try {
+        const shop = req.query.shop || req.session?.shop;
 
-    if (!req.session || !req.session.shop || !req.session.accessToken) {
-        console.warn("❌ No valid session found");
+        console.log("VERIFY CHECK → shop:", shop);
+
+        if (!shop) {
+            console.warn("❌ No shop provided");
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+
+        req.shop = shop;
+        next();
+
+    } catch (error) {
+        console.error("Verification error:", error);
         return res.status(401).json({ error: "Unauthorized" });
     }
-
-    next();
 }
 
 /* --------------------------------------------

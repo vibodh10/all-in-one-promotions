@@ -17,7 +17,7 @@ import pgSession from 'connect-pg-simple';
 import pkg from 'pg';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
-import authRouter from './middleware/auth.js';
+import authRouter, {verifyRequest} from './middleware/auth.js';
 import Shopify from '@shopify/shopify-api';
 
 const { shopifyApi, LATEST_API_VERSION, loadCurrentSession } = Shopify;
@@ -115,9 +115,9 @@ app.get('/health', (req, res) => {
 
 // ✅ 12. Routes (auth before everything else)
 app.use(authRouter);
-app.use('/api/offers', offerRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/billing', billingRoutes);
+app.use('/api/offers', verifyRequest, offerRoutes);
+app.use('/api/analytics', verifyRequest, analyticsRoutes);
+app.use('/api/billing', verifyRequest, billingRoutes);
 app.use('/api/webhooks', webhookRoutes);
 
 // ✅ 13. Frontend serving
