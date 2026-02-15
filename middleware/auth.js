@@ -10,7 +10,7 @@ const router = express.Router();
 
 // ✅ Initialize Shopify instance once
 const shopify = shopifyApi({
-    apiKey: process.env.VITE_SHOPIFY_API_KEY,
+    apiKey: process.env.SHOPIFY_API_KEY,
     apiSecretKey: process.env.SHOPIFY_API_SECRET,
     scopes: process.env.SHOPIFY_SCOPES.split(","),
     hostName: process.env.HOST.replace(/https?:\/\//, ""),
@@ -75,12 +75,25 @@ router.get("/auth/callback", async (req, res) => {
 --------------------------------------------- */
 export async function verifyRequest(req, res, next) {
     try {
-        const session = await loadCurrentSession(req, res, true);
-        if (!session || !session.accessToken) {
-            console.warn("❌ No active session found");
+        const sessionId = await shopify.session.getCurrentId({
+            isOnline: false,
+            rawRequest: req,
+            rawResponse: res,
+        });
+
+        if (!sessionId) {
+            console.warn("❌ No session ID found");
             return res.status(401).json({ error: "Unauthorized" });
         }
-        req.session = session;
+
+        const session = await shopify.session.storage.loadSession(sessionId);
+
+        if (!session || !session.accessToken) {
+            console.warn("❌ No valid session found");
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+
+        req.shopifySession = session;
         next();
     } catch (error) {
         console.error("Verification error:", error);

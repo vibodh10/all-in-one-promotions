@@ -64,7 +64,7 @@ app.use((req, res, next) => {
 
 // ✅ 7. Initialize Shopify
 const shopify = shopifyApi({
-    apiKey: process.env.VITE_SHOPIFY_API_KEY,
+    apiKey: process.env.SHOPIFY_API_KEY,
     apiSecretKey: process.env.SHOPIFY_API_SECRET,
     scopes: process.env.SHOPIFY_SCOPES.split(','),
     hostName: process.env.HOST.replace(/https?:\/\//, ''),
@@ -114,7 +114,7 @@ app.get('/health', (req, res) => {
 });
 
 // ✅ 12. Routes (auth before everything else)
-app.use(authRouter);
+app.use(authRouter(shopify));
 app.use('/api/offers', offerRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/billing', billingRoutes);
