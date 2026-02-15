@@ -1,7 +1,6 @@
 // middleware/auth.js
 import express from "express";
 const { shopifyApi, LATEST_API_VERSION } = Shopify;
-import { loadCurrentSession } from '@shopify/shopify-api/dist/utils/session/load-current-session.js';
 
 const router = express.Router();
 
@@ -72,18 +71,11 @@ router.get("/auth/callback", async (req, res) => {
 --------------------------------------------- */
 export async function verifyRequest(req, res, next) {
     try {
-        const session = await loadCurrentSession(
-            req,
-            res,
-            true
-        );
-
-        if (!session || !session.accessToken) {
-            console.warn("❌ No active session found");
+        if (!req.session || !req.session.shop) {
+            console.warn("❌ No session found");
             return res.status(401).json({ error: "Unauthorized" });
         }
 
-        req.shopifySession = session;
         next();
 
     } catch (error) {
