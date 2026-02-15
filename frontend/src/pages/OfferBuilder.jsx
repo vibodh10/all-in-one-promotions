@@ -1,3 +1,4 @@
+import { getSessionToken } from "@shopify/app-bridge-utils";
 import React, { useState, useCallback } from 'react';
 import {
     Page,
@@ -240,14 +241,32 @@ function OfferBuilder() {
     // ---- Save Offer ---- //
     const saveOffer = async (publish = false) => {
         try {
-            const payload = { ...offerData, status: publish ? 'active' : 'draft' };
-            const { data } = await axios.post('/api/offers', payload, {
-                withCredentials: true
-            });
+            const payload = {
+                ...offerData,
+                status: publish ? 'active' : 'draft'
+            };
+
+            // 🔥 Get Shopify session token
+            const token = await getSessionToken(app);
+
+            const { data } = await axios.post(
+                '/api/offers',
+                payload,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    withCredentials: true,
+                }
+            );
+
             if (data.success) navigate('/offers');
+
         } catch (error) {
             console.error("SAVE OFFER ERROR:", error);
             console.error("Response:", error?.response?.data);
+
             setErrors([
                 error?.response?.data?.error?.message ||
                 error.message ||
