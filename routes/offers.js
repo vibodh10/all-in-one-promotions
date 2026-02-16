@@ -76,6 +76,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', verifyRequest, async (req, res) => {
   console.log("BODY RECEIVED:", req.body);
   console.log("QUERY:", req.query);
+  console.log("SESSION:", req.session);
 
   try {
     const shopId = req.query.shop;

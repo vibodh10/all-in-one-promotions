@@ -4,20 +4,13 @@
  */
 
 import { shopify } from "../shopify.js";
+import {RestClient} from "@shopify/shopify-api/lib/clients/admin/index.js";
 
 /**
  * Helper: create authenticated REST client for current session
  */
-async function restClient(shop) {
-  const sessionId = shopify.session.getOfflineId(shop);
-
-  const session = await shopify.config.sessionStorage.loadSession(sessionId);
-
-  if (!session || !session.accessToken) {
-    throw new Error("No valid Shopify offline session found");
-  }
-
-  return new shopify.clients.Rest({ session });
+function restClient(session) {
+  return new RestClient(session.shop, session.accessToken);
 }
 
 /* ==========================================================
