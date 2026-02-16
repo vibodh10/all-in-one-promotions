@@ -4,6 +4,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+import { MemorySessionStorage } from '@shopify/shopify-api/dist/auth/session';
+
 // ✅ 2. Imports
 import '@shopify/shopify-api/adapters/node';
 import express from 'express';
@@ -70,6 +72,7 @@ const shopify = shopifyApi({
     hostName: process.env.HOST.replace(/https?:\/\//, ''),
     apiVersion: LATEST_API_VERSION,
     isEmbeddedApp: true,
+    sessionStorage: new MemorySessionStorage(),
 });
 
 // ✅ 8. Body parsers

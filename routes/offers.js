@@ -1,6 +1,8 @@
 import express from 'express';
 const router = express.Router();
 
+import { loadCurrentSession } from '@shopify/shopify-api';
+
 import { verifyRequest } from '../middleware/auth.js';
 import Offer from '../models/Offer.js';
 import database from '../utils/database.js';
@@ -101,7 +103,13 @@ router.post('/', verifyRequest, async (req, res) => {
 
     // Create Shopify discount if offer is active
     if (savedOffer.status === 'active') {
-      await shopifyFunctions.createDiscount(shopId, savedOffer);
+      const shopifySession = await loadCurrentSession(req, res, false);
+
+      if (!shopifySession) {
+        throw new Error("No Shopify session found");
+      }
+
+      await shopifyFunctions.createDiscount(shopifySession, savedOffer);
     }
 
     res.status(201).json({

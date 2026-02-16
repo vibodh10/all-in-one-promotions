@@ -50,8 +50,6 @@ router.get("/auth/callback", async (req, res) => {
         });
 
         // 🔥 Store EVERYTHING needed
-        req.session.shop = session.shop;
-        req.session.accessToken = session.accessToken;
         req.session.scope = session.scope;
         req.session.host = req.query.host || session.host;
 
