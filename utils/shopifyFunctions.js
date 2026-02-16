@@ -1,82 +1,103 @@
+// utils/shopifyFunctions.js
 /**
  * Shopify Functions utility
- * Handles discount creation and management via Shopify REST API (v11+)
+ * Uses the SINGLE shopify instance from middleware/auth.js
  */
+import { shopify } from "../middleware/auth.js";
 
-import Shopify, {LATEST_API_VERSION, shopifyApi} from "@shopify/shopify-api";
+/** Convert GID -> numeric id (required by REST price_rules API) */
+function toNumericId(gidOrNumber) {
+  if (gidOrNumber == null) return null;
+  const s = String(gidOrNumber);
+  if (/^\d+$/.test(s)) return Number(s);
+  const parts = s.split("/");
+  const last = parts[parts.length - 1];
+  return /^\d+$/.test(last) ? Number(last) : null;
+}
 
-const shopify = shopifyApi({
-  apiKey: process.env.VITE_SHOPIFY_API_KEY,
-  apiSecretKey: process.env.SHOPIFY_API_SECRET,
-  scopes: process.env.SHOPIFY_SCOPES.split(","),
-  hostName: process.env.HOST.replace(/https?:\/\//, ""),
-  apiVersion: LATEST_API_VERSION,
-  isEmbeddedApp: true,
-});
+/** Build a Shopify Session object from express-session (no DB storage needed) */
+export function buildShopifySessionFromReq(req) {
+  const shop = req.query.shop || req.session?.shop;
+  const accessToken = req.session?.accessToken;
 
-/**
- * Helper: create authenticated REST client for current session
- */
+  if (!shop || !accessToken) return null;
+
+  const id = `offline_${shop}`;
+  const s = new shopify.session.Session({
+    id,
+    shop,
+    state: "n/a",
+    isOnline: false,
+  });
+
+  s.accessToken = accessToken;
+  return s;
+}
+
+/** Create REST client using Shopify Session */
 function restClient(session) {
   return new shopify.clients.Rest({ session });
 }
 
 /* ==========================================================
-   1️⃣ Create Discount
+   Create Discount (Price Rules + Discount Code)
+   NOTE: Price rules are old API. For now OK for tests/dev stores.
    ========================================================== */
-export async function createDiscount(shop, offer) {
-  try {
-    const client = restClient(shop);
+export async function createDiscount(session, offer) {
+  const client = restClient(session);
 
-    if (offer.type === "quantity_break" || offer.type === "volume_discount") {
-      return await createQuantityDiscount(client, offer);
-    } else if (offer.type === "bundle") {
-      return await createBundleDiscount(client, offer);
-    } else if (offer.type === "cross_sell") {
-      return await createCrossSellDiscount(client, offer);
-    }
+  // Your frontend sends products as objects: [{id,title,images...}]
+  const entitledProductIds = (offer.products || [])
+      .map((p) => toNumericId(p.id ?? p))
+      .filter(Boolean);
 
-    return null;
-  } catch (error) {
-    console.error("Error creating discount:", error);
-    throw error;
+  // If you want collections support later, you’ll need to expand to product ids.
+
+  const discountCode = `SMARTOFFER_${offer.id || Date.now()}`;
+
+  const valueType = offer.discountType === "percentage" ? "percentage" : "fixed_amount";
+  const value = `-${Number(offer.discountValue || 0)}`;
+
+  const minQty =
+      Array.isArray(offer.tiers) && offer.tiers.length > 0
+          ? Number(offer.tiers[0].quantity || 1)
+          : 1;
+
+  const startsAt = offer?.schedule?.startDate || new Date().toISOString();
+  const endsAt = offer?.schedule?.endDate || null;
+
+  // Basic guard
+  if (entitledProductIds.length === 0) {
+    throw new Error("No entitled products selected (entitled_product_ids is empty).");
   }
-}
 
-/* ==========================================================
-   2️⃣ Quantity-based Discount
-   ========================================================== */
-async function createQuantityDiscount(client, offer) {
-  const discountCode = `SMARTOFFER_${offer.id}`;
-
-  const response = await client.post({
+  // 1) Create price rule
+  const pr = await client.post({
     path: "price_rules",
     data: {
       price_rule: {
-        title: offer.name,
+        title: offer.name || "Smart Offer",
         target_type: "line_item",
         target_selection: "entitled",
         allocation_method: "across",
-        value_type: offer.discountType === "percentage" ? "percentage" : "fixed_amount",
-        value:
-            offer.discountType === "percentage"
-                ? `-${offer.discountValue}`
-                : `-${offer.discountValue}`,
+        value_type: valueType,
+        value,
         customer_selection: "all",
-        entitled_product_ids: offer.products || [],
-        starts_at: offer.schedule?.startDate || new Date().toISOString(),
-        ends_at: offer.schedule?.endDate || null,
+        entitled_product_ids: entitledProductIds,
+        starts_at: startsAt,
+        ends_at: endsAt,
         prerequisite_quantity_range: {
-          greater_than_or_equal_to:
-              offer.tiers?.length > 0 ? offer.tiers[0].quantity : 1,
+          greater_than_or_equal_to: minQty,
         },
       },
     },
     type: "application/json",
   });
 
-  const priceRule = response.body.price_rule;
+  const priceRule = pr?.body?.price_rule;
+  if (!priceRule?.id) throw new Error("Failed to create price rule");
 
+  // 2) Create discount code under price rule
   await client.post({
     path: `price_rules/${priceRule.id}/discount_codes`,
     data: { discount_code: { code: discountCode } },
@@ -84,184 +105,28 @@ async function createQuantityDiscount(client, offer) {
   });
 
   return { priceRuleId: priceRule.id, discountCode };
-}
-
-/* ==========================================================
-   3️⃣ Bundle Discount
-   ========================================================== */
-async function createBundleDiscount(client, offer) {
-  const discountCode = `BUNDLE_${offer.id}`;
-
-  const response = await client.post({
-    path: "price_rules",
-    data: {
-      price_rule: {
-        title: offer.name,
-        target_type: "line_item",
-        target_selection: "entitled",
-        allocation_method: "across",
-        value_type: offer.discountType === "percentage" ? "percentage" : "fixed_amount",
-        value:
-            offer.discountType === "percentage"
-                ? `-${offer.discountValue}`
-                : `-${offer.discountValue}`,
-        customer_selection: "all",
-        entitled_product_ids: offer.products || [],
-        prerequisite_quantity_range: {
-          greater_than_or_equal_to: offer.bundleConfig?.minItems || 2,
-        },
-        starts_at: offer.schedule?.startDate || new Date().toISOString(),
-        ends_at: offer.schedule?.endDate || null,
-      },
-    },
-    type: "application/json",
-  });
-
-  const priceRule = response.body.price_rule;
-
-  await client.post({
-    path: `price_rules/${priceRule.id}/discount_codes`,
-    data: { discount_code: { code: discountCode } },
-    type: "application/json",
-  });
-
-  return { priceRuleId: priceRule.id, discountCode };
-}
-
-/* ==========================================================
-   4️⃣ Cross-sell Discount
-   ========================================================== */
-async function createCrossSellDiscount(client, offer) {
-  const discountCode = `CROSSSELL_${offer.id}`;
-
-  const response = await client.post({
-    path: "price_rules",
-    data: {
-      price_rule: {
-        title: offer.name,
-        target_type: "line_item",
-        target_selection: "entitled",
-        allocation_method: "across",
-        value_type: offer.discountType === "percentage" ? "percentage" : "fixed_amount",
-        value:
-            offer.discountType === "percentage"
-                ? `-${offer.discountValue}`
-                : `-${offer.discountValue}`,
-        customer_selection: "all",
-        entitled_product_ids: offer.products || [],
-        starts_at: offer.schedule?.startDate || new Date().toISOString(),
-        ends_at: offer.schedule?.endDate || null,
-      },
-    },
-    type: "application/json",
-  });
-
-  const priceRule = response.body.price_rule;
-
-  await client.post({
-    path: `price_rules/${priceRule.id}/discount_codes`,
-    data: { discount_code: { code: discountCode } },
-    type: "application/json",
-  });
-
-  return { priceRuleId: priceRule.id, discountCode };
-}
-
-/* ==========================================================
-   5️⃣ Update, Delete, Disable
-   ========================================================== */
-export async function updateDiscount(session, offer) {
-  try {
-    if (offer.shopifyDiscountId) await deleteDiscount(session, offer);
-    return await createDiscount(session, offer);
-  } catch (error) {
-    console.error("Error updating discount:", error);
-    throw error;
-  }
 }
 
 export async function deleteDiscount(session, offer) {
-  try {
-    if (!offer.shopifyDiscountId) return;
-    const client = restClient(session);
-    await client.delete({ path: `price_rules/${offer.shopifyDiscountId}` });
-  } catch (error) {
-    console.error("Error deleting discount:", error);
-  }
+  if (!offer?.shopifyDiscountId) return;
+  const client = restClient(session);
+  await client.delete({ path: `price_rules/${offer.shopifyDiscountId}` });
 }
 
 export async function disableDiscount(session, offer) {
-  try {
-    if (!offer.shopifyDiscountId) return;
-    const client = restClient(session);
-    await client.put({
-      path: `price_rules/${offer.shopifyDiscountId}`,
-      data: { price_rule: { ends_at: new Date().toISOString() } },
-      type: "application/json",
-    });
-  } catch (error) {
-    console.error("Error disabling discount:", error);
-    throw error;
-  }
+  if (!offer?.shopifyDiscountId) return;
+  const client = restClient(session);
+  await client.put({
+    path: `price_rules/${offer.shopifyDiscountId}`,
+    data: { price_rule: { ends_at: new Date().toISOString() } },
+    type: "application/json",
+  });
 }
 
-/* ==========================================================
-   6️⃣ Product & Collection Helpers
-   ========================================================== */
-export async function getProduct(session, productId) {
-  try {
-    const client = restClient(session);
-    const response = await client.get({ path: `products/${productId}` });
-    return response.body.product;
-  } catch (error) {
-    console.error("Error fetching product:", error);
-    return null;
+export async function updateDiscount(session, offer) {
+  // simplest: delete + recreate
+  if (offer?.shopifyDiscountId) {
+    await deleteDiscount(session, offer);
   }
-}
-
-export async function getCollection(session, collectionId) {
-  try {
-    const client = restClient(session);
-    const response = await client.get({ path: `collections/${collectionId}` });
-    return response.body.collection;
-  } catch (error) {
-    console.error("Error fetching collection:", error);
-    return null;
-  }
-}
-
-export async function getProductsFromCollection(session, collectionId) {
-  try {
-    const client = restClient(session);
-    const response = await client.get({ path: `collections/${collectionId}/products` });
-    return response.body.products;
-  } catch (error) {
-    console.error("Error fetching collection products:", error);
-    return [];
-  }
-}
-
-/* ==========================================================
-   7️⃣ Checkout Discount (Local Calculation)
-   ========================================================== */
-export async function applyCheckoutDiscount(session, offer, cartItems) {
-  try {
-    const discount = offer.calculateDiscount(
-        cartItems.reduce((sum, item) => sum + item.quantity, 0),
-        cartItems
-    );
-
-    if (discount > 0) {
-      return {
-        type: offer.discountType,
-        value: discount,
-        code: `SMARTOFFER_${offer.id}`,
-      };
-    }
-
-    return null;
-  } catch (error) {
-    console.error("Error applying checkout discount:", error);
-    return null;
-  }
+  return createDiscount(session, offer);
 }

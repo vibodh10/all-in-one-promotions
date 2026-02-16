@@ -5,24 +5,25 @@ import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
 
 const router = express.Router();
 
-/* --------------------------------------------
-   1️⃣ Initialize Shopify instance (ONLY once)
---------------------------------------------- */
-const shopify = shopifyApi({
-    apiKey: process.env.VITE_SHOPIFY_API_KEY,
+/**
+ * SINGLE Shopify instance for the whole backend
+ * (Do NOT re-initialize Shopify in other files)
+ */
+export const shopify = shopifyApi({
+    apiKey: process.env.SHOPIFY_API_KEY, // ✅ backend env (NOT VITE_)
     apiSecretKey: process.env.SHOPIFY_API_SECRET,
-    scopes: process.env.SHOPIFY_SCOPES.split(","),
-    hostName: process.env.HOST.replace(/https?:\/\//, ""),
-    apiVersion: LATEST_API_VERSION,
+    scopes: (process.env.SHOPIFY_SCOPES || "").split(",").map((s) => s.trim()).filter(Boolean),
+    hostName: (process.env.HOST || "").replace(/^https?:\/\//, ""),
+    apiVersion: process.env.SHOPIFY_API_VERSION || LATEST_API_VERSION,
     isEmbeddedApp: true,
 });
 
 /* --------------------------------------------
-   2️⃣ Begin OAuth
+   OAuth start
 --------------------------------------------- */
 router.get("/auth", async (req, res) => {
     try {
-        const shop = req.query.shop;
+        const { shop } = req.query;
         if (!shop) return res.status(400).send("Missing shop param");
 
         await shopify.auth.begin({
@@ -32,7 +33,6 @@ router.get("/auth", async (req, res) => {
             rawRequest: req,
             rawResponse: res,
         });
-
     } catch (err) {
         console.error("Auth start error:", err);
         return res.status(500).json({ error: "Failed to start OAuth" });
@@ -40,7 +40,7 @@ router.get("/auth", async (req, res) => {
 });
 
 /* --------------------------------------------
-   3️⃣ OAuth Callback
+   OAuth callback
 --------------------------------------------- */
 router.get("/auth/callback", async (req, res) => {
     try {
@@ -49,16 +49,18 @@ router.get("/auth/callback", async (req, res) => {
             rawResponse: res,
         });
 
-        // 🔥 Store EVERYTHING needed
+        // ✅ store what YOU need in express-session
+        req.session.shop = session.shop;
+        req.session.accessToken = session.accessToken;
         req.session.scope = session.scope;
-        req.session.host = req.query.host || session.host;
+        req.session.isOnline = session.isOnline || false;
+        req.session.host = req.query.host || session.host || req.session.host;
 
         await new Promise((resolve, reject) =>
-            req.session.save(err => (err ? reject(err) : resolve()))
+            req.session.save((err) => (err ? reject(err) : resolve()))
         );
 
         return res.redirect(`/frontend/?shop=${session.shop}&host=${req.session.host}`);
-
     } catch (err) {
         console.error("Auth callback error:", err);
         return res.status(500).json({ error: "OAuth callback failed" });
@@ -66,48 +68,21 @@ router.get("/auth/callback", async (req, res) => {
 });
 
 /* --------------------------------------------
-   4️⃣ Verify Request (USED BY API ROUTES)
+   Verify middleware
 --------------------------------------------- */
-export async function verifyRequest(req, res, next) {
-    try {
-        const shop = req.query.shop || req.session?.shop;
+export function verifyRequest(req, res, next) {
+    const shop = req.query.shop || req.session?.shop;
+    const accessToken = req.session?.accessToken;
 
-        console.log("VERIFY CHECK → shop:", shop);
+    // Helpful logs while debugging
+    console.log("VERIFY CHECK → shop:", shop, "hasToken:", Boolean(accessToken));
 
-        if (!shop) {
-            console.warn("❌ No shop provided");
-            return res.status(401).json({ error: "Unauthorized" });
-        }
-
-        req.shop = shop;
-        next();
-
-    } catch (error) {
-        console.error("Verification error:", error);
+    if (!shop || !accessToken) {
         return res.status(401).json({ error: "Unauthorized" });
     }
+
+    req.shop = shop;
+    next();
 }
 
-/* --------------------------------------------
-   5️⃣ Verify Webhook
---------------------------------------------- */
-export async function verifyWebhook(req, res, next) {
-    try {
-        await shopify.webhooks.process({
-            rawBody: req.body,
-            rawRequest: req,
-            rawResponse: res,
-        });
-
-        next();
-
-    } catch (error) {
-        console.error("Webhook verification error:", error);
-        return res.status(401).json({ error: "Invalid webhook" });
-    }
-}
-
-/* --------------------------------------------
-   6️⃣ Export router
---------------------------------------------- */
 export default router;

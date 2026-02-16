@@ -1,99 +1,92 @@
 // index.js (ESM)
-
-// ✅ 1. Always load env vars FIRST
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 dotenv.config();
 
-import { MemorySessionStorage } from '@shopify/shopify-api/dist/auth/session';
+import "@shopify/shopify-api/adapters/node";
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
 
-// ✅ 2. Imports
-import '@shopify/shopify-api/adapters/node';
-import express from 'express';
-import offerRoutes from './routes/offers.js';
-import analyticsRoutes from './routes/analytics.js';
-import billingRoutes from './routes/billing.js';
-import webhookRoutes from './routes/webhooks.js';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import pgSession from 'connect-pg-simple';
-import pkg from 'pg';
-import cookieParser from 'cookie-parser';
-import session from 'express-session';
-import authRouter, {verifyRequest} from './middleware/auth.js';
-import Shopify from '@shopify/shopify-api';
+import cookieParser from "cookie-parser";
+import session from "express-session";
 
-const { shopifyApi, LATEST_API_VERSION, loadCurrentSession } = Shopify;
+import pgSession from "connect-pg-simple";
+import pkg from "pg";
+
+import authRouter from "./middleware/auth.js";
+import offerRoutes from "./routes/offers.js";
+import analyticsRoutes from "./routes/analytics.js";
+import billingRoutes from "./routes/billing.js";
+import webhookRoutes from "./routes/webhooks.js";
+
+import { verifyRequest } from "./middleware/auth.js";
 
 const { Pool } = pkg;
 
-// ✅ 3. Setup DB connection *after dotenv*
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+/* -----------------------------
+   Postgres pool (for express-session store)
+------------------------------ */
 const pgPool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false },
 });
 
-// ✅ 4. Express app
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// ✅ 5. Express session middleware — must come before routes
 const PgSession = pgSession(session);
 
+/* -----------------------------
+   Middleware (order matters)
+------------------------------ */
 app.use(cookieParser());
+
 app.use(
     session({
         store: new PgSession({
             pool: pgPool,
-            tableName: 'user_sessions',
+            tableName: "user_sessions",
+            // connect-pg-simple creates it if missing when `createTableIfMissing: true`
+            createTableIfMissing: true,
         }),
-        secret: process.env.SESSION_SECRET || 'something-strong',
+        secret: process.env.SESSION_SECRET || "change-me",
         resave: false,
         saveUninitialized: false,
         cookie: {
             secure: true,
             httpOnly: true,
-            sameSite: 'none',
-            maxAge: 24 * 60 * 60 * 1000, // 1 day
+            sameSite: "none",
+            maxAge: 24 * 60 * 60 * 1000,
         },
     })
 );
 
-// ✅ 6. Logging middleware
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
     next();
 });
 
-// ✅ 7. Initialize Shopify
-const shopify = shopifyApi({
-    apiKey: process.env.SHOPIFY_API_KEY,
-    apiSecretKey: process.env.SHOPIFY_API_SECRET,
-    scopes: process.env.SHOPIFY_SCOPES.split(','),
-    hostName: process.env.HOST.replace(/https?:\/\//, ''),
-    apiVersion: LATEST_API_VERSION,
-    isEmbeddedApp: true,
-    sessionStorage: new MemorySessionStorage(),
-});
-
-// ✅ 8. Body parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ 9. CORS
+/* -----------------------------
+   CORS (embedded app)
+------------------------------ */
 app.use((req, res, next) => {
     const origin = req.headers.origin;
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header(
-        'Access-Control-Allow-Headers',
-        'Origin, X-Requested-With, Content-Type, Accept'
-    );
+    if (origin) res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    if (req.method === "OPTIONS") return res.sendStatus(200);
     next();
 });
 
-// ✅ 10. CSP middleware
+/* -----------------------------
+   CSP
+------------------------------ */
 app.use((req, res, next) => {
-    const shopOrigin = req.query.shop ? `https://${req.query.shop}` : '';
+    const shopOrigin = req.query.shop ? `https://${req.query.shop}` : "";
     const csp = `
     default-src 'self' data: blob: https:;
     script-src 'self' 'unsafe-inline' 'unsafe-eval' https:;
@@ -103,59 +96,66 @@ app.use((req, res, next) => {
     frame-ancestors ${shopOrigin} https://admin.shopify.com;
     object-src 'none';
     base-uri 'self';
-  `.replace(/\s{2,}/g, ' ').trim();
+  `.replace(/\s{2,}/g, " ").trim();
 
-    res.setHeader('Content-Security-Policy', csp);
+    res.setHeader("Content-Security-Policy", csp);
     next();
 });
 
-// ✅ 11. Health check
-app.get('/health', (req, res) => {
-    res
-        .status(200)
-        .json({ status: 'healthy', timestamp: new Date().toISOString() });
+/* -----------------------------
+   Health
+------------------------------ */
+app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "healthy", timestamp: new Date().toISOString() });
 });
 
-// ✅ 12. Routes (auth before everything else)
+/* -----------------------------
+   Auth routes (must be mounted)
+------------------------------ */
 app.use(authRouter);
-app.use('/api/offers', verifyRequest, offerRoutes);
-app.use('/api/analytics', verifyRequest, analyticsRoutes);
-app.use('/api/billing', verifyRequest, billingRoutes);
-app.use('/api/webhooks', webhookRoutes);
 
-// ✅ 13. Frontend serving
+/* -----------------------------
+   API routes
+------------------------------ */
+app.use("/api/offers", verifyRequest, offerRoutes);
+app.use("/api/analytics", verifyRequest, analyticsRoutes);
+app.use("/api/billing", verifyRequest, billingRoutes);
+app.use("/api/webhooks", webhookRoutes);
+
+/* -----------------------------
+   Frontend serving
+------------------------------ */
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const isDev = process.env.NODE_ENV !== "production";
 
 if (isDev) {
-    console.log("🔥 Running in DEVELOPMENT mode — proxying to Vite");
-
-    app.use('/frontend', (req, res) => {
-        res.redirect(`http://localhost:5173${req.originalUrl.replace('/frontend', '')}`);
+    console.log("🔥 DEVELOPMENT — redirecting /frontend to Vite");
+    app.use("/frontend", (req, res) => {
+        res.redirect(`http://localhost:5173${req.originalUrl.replace("/frontend", "")}`);
     });
-
 } else {
-    console.log("🚀 Running in PRODUCTION mode — serving built frontend");
-
-    const frontendPath = path.join(__dirname, 'frontend', 'dist');
-
-    app.use('/frontend', express.static(frontendPath));
-
-    app.get('/frontend/*', (req, res) => {
-        res.sendFile(path.join(frontendPath, 'index.html'));
+    console.log("🚀 PRODUCTION — serving built frontend");
+    const frontendPath = path.join(__dirname, "frontend", "dist");
+    app.use("/frontend", express.static(frontendPath));
+    app.get("/frontend/*", (_req, res) => {
+        res.sendFile(path.join(frontendPath, "index.html"));
     });
 }
 
-// Root route stays same
-app.get('/', (req, res) => {
+/* -----------------------------
+   Root route: ensure shop+host then go frontend
+------------------------------ */
+app.get("/", (req, res) => {
     const shop = req.query.shop || req.session.shop;
     const host = req.query.host || req.session.host;
 
-    if (!shop || !host) {
-        if (shop) req.session.shop = shop;
-        return res.redirect(`/auth?shop=${shop || ''}`);
+    if (!shop) return res.status(400).send("Missing shop");
+
+    if (!host) {
+        // No host? push through OAuth to get proper embedded params
+        return res.redirect(`/auth?shop=${shop}`);
     }
 
     req.session.shop = shop;
@@ -164,35 +164,23 @@ app.get('/', (req, res) => {
     return res.redirect(302, `/frontend/?shop=${shop}&host=${host}`);
 });
 
-// ✅ 14. Error handler
-app.use((err, req, res, next) => {
-    console.error('Error:', err);
+/* -----------------------------
+   Error handler
+------------------------------ */
+app.use((err, _req, res, _next) => {
+    console.error("Error:", err);
     res.status(err.status || 500).json({
         error: {
-            message: err.message || 'Internal server error',
+            message: err.message || "Internal server error",
             status: err.status || 500,
         },
     });
 });
 
-// ✅ 15. Debug route — use same instance `shopify`
-
-app.get("/debug-session", async (req, res) => {
-    try {
-        const shopifySession = await loadCurrentSession(req, res, true);
-        res.json({
-            session: req.session,
-            shopifySession,
-        });
-    } catch (err) {
-        console.error("Debug session error:", err);
-        res.status(500).json({ error: "Failed to load session" });
-    }
-});
-
-
-// ✅ 16. Start server
-app.listen(PORT, '0.0.0.0', () => {
+/* -----------------------------
+   Start
+------------------------------ */
+app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Smart Offers & Bundles app running on port ${PORT}`);
 });
 
