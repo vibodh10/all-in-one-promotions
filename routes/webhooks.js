@@ -28,7 +28,7 @@ router.post("/app/uninstalled", async (req, res) => {
 });
 
 // ✅ Shop update
-router.post("/shop/update", verifyWebhook, async (req, res) => {
+router.post("/shop/update", async (req, res) => {
     try {
         const shop = req.body;
         console.log(`Shop updated: ${shop.domain}`);
@@ -49,7 +49,7 @@ router.post("/shop/update", verifyWebhook, async (req, res) => {
 });
 
 // ✅ Orders create
-router.post("/orders/create", verifyWebhook, async (req, res) => {
+router.post("/orders/create", async (req, res) => {
     try {
         const order = req.body;
         console.log(`New order created: ${order.id}`);
