@@ -3,13 +3,14 @@
  * Handles discount creation and management via Shopify REST API (v11+)
  */
 
-import { RestClient } from "@shopify/shopify-api";
+import pkg from "@shopify/shopify-api";
+const { Shopify } = pkg;
 
 /**
  * Helper: create authenticated REST client for current session
  */
 function restClient(session) {
-  return new RestClient(session.shop, session.accessToken);
+  return new Shopify.Clients.Rest(session.shop, session.accessToken);
 }
 
 /* ==========================================================
