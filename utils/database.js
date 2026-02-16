@@ -283,6 +283,27 @@ async function getOffersByProduct(productId) {
     }
 }
 
+async function saveShop({ shop, accessToken }) {
+    await db.query(
+        `
+    INSERT INTO shops (shop, access_token)
+    VALUES ($1, $2)
+    ON CONFLICT (shop)
+    DO UPDATE SET access_token = EXCLUDED.access_token
+    `,
+        [shop, accessToken]
+    );
+}
+
+async function getShopByDomain(shop) {
+    const { rows } = await db.query(
+        `SELECT * FROM shops WHERE shop = $1`,
+        [shop]
+    );
+    return rows[0];
+}
+
+
 const database = {
     getOffers,
     getOfferById,
@@ -293,6 +314,8 @@ const database = {
     getAnalyticsEvents,
     getSubscription,
     saveSubscription,
+    getShopByDomain,
+    saveShop,
     saveSession,
     getSession,
     deleteShopData,

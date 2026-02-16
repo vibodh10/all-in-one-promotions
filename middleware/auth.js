@@ -2,6 +2,7 @@
 import express from "express";
 import "@shopify/shopify-api/adapters/node";
 import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
+import database from "../utils/database.js";
 
 const router = express.Router();
 
@@ -86,34 +87,32 @@ router.get("/auth/callback", async (req, res) => {
 export async function verifyRequest(req, res, next) {
     try {
         const shop = req.query.shop;
+
         if (!shop) {
-            console.warn("❌ Missing shop query param");
-            return res.status(401).json({ error: "Unauthorized (missing shop)" });
+            return res.status(401).json({ error: "Missing shop" });
         }
 
-        const pool = req.app.locals.pgPool;
-        const result = await pool.query(
-            "select access_token from shop_tokens where shop = $1",
-            [shop]
-        );
+        // 🔥 Always load token from DB
+        const shopRecord = await database.getShopByDomain(shop);
 
-        const accessToken = result.rows?.[0]?.access_token;
-
-        console.log("VERIFY CHECK -> shop:", shop, "hasToken:", Boolean(accessToken));
-
-        if (!accessToken) {
-            console.warn("❌ Missing shop or access token");
-            return res.status(401).json({ error: "Unauthorized (no token stored). Reinstall app." });
+        if (!shopRecord || !shopRecord.access_token) {
+            console.log("❌ No token stored in DB");
+            return res.status(401).json({
+                error: "Unauthorized (no token stored). Reinstall app."
+            });
         }
 
-        // Attach a minimal auth context for downstream usage
+        // Attach to request for later use
         req.shop = shop;
-        req.accessToken = accessToken;
+        req.accessToken = shopRecord.access_token;
+
+        console.log("VERIFY CHECK -> shop:", shop, "hasToken:", true);
 
         next();
-    } catch (err) {
-        console.error("Verification error:", err);
-        return res.status(401).json({ error: "Unauthorized" });
+
+    } catch (error) {
+        console.error("Verify error:", error);
+        res.status(401).json({ error: "Unauthorized" });
     }
 }
 
