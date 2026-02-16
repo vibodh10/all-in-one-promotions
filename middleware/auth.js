@@ -80,17 +80,14 @@ export async function verifyRequest(req, res, next) {
         console.log("VERIFY CHECK → shop:", shop, "hasToken:", !!accessToken);
 
         if (!shop || !accessToken) {
+            console.warn("❌ Missing shop or access token");
             return res.status(401).json({ error: "Unauthorized" });
         }
 
-        // Attach a Shopify Session object to req
-        req.shopifySession = {
-            shop,
-            accessToken,
-        };
+        req.shop = shop;
+        req.accessToken = accessToken;
 
         next();
-
     } catch (error) {
         console.error("Verification error:", error);
         return res.status(401).json({ error: "Unauthorized" });

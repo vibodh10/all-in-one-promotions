@@ -35,8 +35,13 @@ export function buildShopifySessionFromReq(req) {
 }
 
 /** Create REST client using Shopify Session */
-function restClient(session) {
-  return new shopify.clients.Rest({ session });
+function restClient(req) {
+  return new shopify.clients.Rest({
+    session: {
+      shop: req.shop,
+      accessToken: req.accessToken,
+    },
+  });
 }
 
 /* ==========================================================
