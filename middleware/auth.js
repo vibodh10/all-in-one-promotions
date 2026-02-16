@@ -56,6 +56,8 @@ router.get("/auth/callback", async (req, res) => {
         req.session.isOnline = session.isOnline || false;
         req.session.host = req.query.host || session.host || req.session.host;
 
+        console.log("OAuth SUCCESS → token:", session.accessToken);
+
         await new Promise((resolve, reject) =>
             req.session.save((err) => (err ? reject(err) : resolve()))
         );
@@ -70,19 +72,29 @@ router.get("/auth/callback", async (req, res) => {
 /* --------------------------------------------
    Verify middleware
 --------------------------------------------- */
-export function verifyRequest(req, res, next) {
-    const shop = req.query.shop || req.session?.shop;
-    const accessToken = req.session?.accessToken;
+export async function verifyRequest(req, res, next) {
+    try {
+        const shop = req.query.shop || req.session?.shop;
+        const accessToken = req.session?.accessToken;
 
-    // Helpful logs while debugging
-    console.log("VERIFY CHECK → shop:", shop, "hasToken:", Boolean(accessToken));
+        console.log("VERIFY CHECK → shop:", shop, "hasToken:", !!accessToken);
 
-    if (!shop || !accessToken) {
+        if (!shop || !accessToken) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+
+        // Attach a Shopify Session object to req
+        req.shopifySession = {
+            shop,
+            accessToken,
+        };
+
+        next();
+
+    } catch (error) {
+        console.error("Verification error:", error);
         return res.status(401).json({ error: "Unauthorized" });
     }
-
-    req.shop = shop;
-    next();
 }
 
 export default router;
