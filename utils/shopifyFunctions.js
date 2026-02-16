@@ -19,7 +19,7 @@ const shopify = shopifyApi({
  * Helper: create authenticated REST client for current session
  */
 function restClient(session) {
-  return new shopify.rest.RestClient({ session });
+  return new shopify.clients.Rest({ session });
 }
 
 /* ==========================================================
