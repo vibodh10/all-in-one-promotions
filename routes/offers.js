@@ -78,7 +78,7 @@ router.post("/", async (req, res) => {
       const shopifySession = buildShopifySessionFromReq(req);
       if (!shopifySession) return res.status(401).json({ success: false, error: "No Shopify session" });
 
-      const disc = await createDiscount(req, savedOffer);
+      const disc = await createDiscount({ shop: req.shop, accessToken: req.accessToken }, savedOffer);
 
       // store ids if you want to manage later
       const updated = await database.updateOffer(savedOffer.id, {
@@ -133,7 +133,7 @@ router.put("/:id", async (req, res) => {
       const shopifySession = buildShopifySessionFromReq(req);
       if (!shopifySession) return res.status(401).json({ success: false, error: "No Shopify session" });
 
-      const disc = await updateDiscount(req, savedOffer);
+      const disc = await updateDiscount({ shop: req.shop, accessToken: req.accessToken }, savedOffer);
 
       const updated = await database.updateOffer(savedOffer.id, {
         ...savedOffer,
@@ -165,7 +165,7 @@ router.delete("/:id", async (req, res) => {
 
     const shopifySession = buildShopifySessionFromReq(req);
     if (shopifySession) {
-      await deleteDiscount(req, offer);
+      await deleteDiscount({ shop: req.shop, accessToken: req.accessToken }, offer);
     }
 
     await database.deleteOffer(id, shopId);
@@ -211,7 +211,7 @@ router.patch("/:id/status", async (req, res) => {
           updatedAt: new Date(),
         });
       } else if (status === "paused") {
-        await disableDiscount(req, updatedOffer);
+        await disableDiscount({ shop: req.shop, accessToken: req.accessToken }, updatedOffer);
       }
     }
 

@@ -6,24 +6,24 @@ import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
 const router = express.Router();
 
 /**
- * SINGLE Shopify instance for the whole backend
- * (Do NOT re-initialize Shopify in other files)
+ * One single Shopify API instance (ONLY here).
+ * Do NOT create another instance elsewhere.
  */
 export const shopify = shopifyApi({
-    apiKey: process.env.SHOPIFY_API_KEY, // ✅ backend env (NOT VITE_)
+    apiKey: process.env.VITE_SHOPIFY_API_KEY,
     apiSecretKey: process.env.SHOPIFY_API_SECRET,
-    scopes: (process.env.SHOPIFY_SCOPES || "").split(",").map((s) => s.trim()).filter(Boolean),
-    hostName: (process.env.HOST || "").replace(/^https?:\/\//, ""),
-    apiVersion: process.env.SHOPIFY_API_VERSION || LATEST_API_VERSION,
+    scopes: (process.env.SHOPIFY_SCOPES || "").split(",").map(s => s.trim()).filter(Boolean),
+    hostName: (process.env.HOST || "").replace(/https?:\/\//, ""),
+    apiVersion: LATEST_API_VERSION,
     isEmbeddedApp: true,
 });
 
-/* --------------------------------------------
-   OAuth start
---------------------------------------------- */
+/**
+ * Start OAuth
+ */
 router.get("/auth", async (req, res) => {
     try {
-        const { shop } = req.query;
+        const shop = req.query.shop;
         if (!shop) return res.status(400).send("Missing shop param");
 
         await shopify.auth.begin({
@@ -35,13 +35,14 @@ router.get("/auth", async (req, res) => {
         });
     } catch (err) {
         console.error("Auth start error:", err);
-        return res.status(500).json({ error: "Failed to start OAuth" });
+        res.status(500).json({ error: "Failed to start OAuth" });
     }
 });
 
-/* --------------------------------------------
-   OAuth callback
---------------------------------------------- */
+/**
+ * OAuth callback
+ * ✅ Store token in Postgres (Neon) instead of relying on cookies.
+ */
 router.get("/auth/callback", async (req, res) => {
     try {
         const session = await shopify.auth.callback({
@@ -49,48 +50,97 @@ router.get("/auth/callback", async (req, res) => {
             rawResponse: res,
         });
 
-        // ✅ store what YOU need in express-session
-        req.session.shop = session.shop;
-        req.session.accessToken = session.accessToken;
-        req.session.scope = session.scope;
-        req.session.isOnline = session.isOnline || false;
-        req.session.host = req.query.host || session.host || req.session.host;
+        const host = req.query.host || session.host || req.query.host;
 
-        console.log("OAuth SUCCESS → token:", session.accessToken);
+        // Persist token in DB (Neon)
+        const pool = req.app.locals.pgPool;
+        if (!pool) {
+            console.error("❌ pgPool missing on app.locals");
+            return res.status(500).send("Server misconfigured (pgPool missing)");
+        }
 
-        await new Promise((resolve, reject) =>
-            req.session.save((err) => (err ? reject(err) : resolve()))
+        await pool.query(
+            `
+      insert into shop_tokens (shop, access_token, scope, updated_at)
+      values ($1, $2, $3, now())
+      on conflict (shop)
+      do update set access_token = excluded.access_token,
+                    scope = excluded.scope,
+                    updated_at = now()
+      `,
+            [session.shop, session.accessToken, session.scope || null]
         );
 
-        return res.redirect(`/frontend/?shop=${session.shop}&host=${req.session.host}`);
+        // Redirect into embedded app
+        return res.redirect(`/frontend/?shop=${encodeURIComponent(session.shop)}&host=${encodeURIComponent(host)}`);
     } catch (err) {
         console.error("Auth callback error:", err);
-        return res.status(500).json({ error: "OAuth callback failed" });
+        res.status(500).json({ error: "OAuth callback failed" });
     }
 });
 
-/* --------------------------------------------
-   Verify middleware
---------------------------------------------- */
+/**
+ * Verify middleware for API routes
+ * ✅ Reads access token from DB every time.
+ */
 export async function verifyRequest(req, res, next) {
     try {
-        const shop = req.query.shop || req.session?.shop;
-        const accessToken = req.session?.accessToken;
-
-        console.log("VERIFY CHECK → shop:", shop, "hasToken:", !!accessToken);
-
-        if (!shop || !accessToken) {
-            console.warn("❌ Missing shop or access token");
-            return res.status(401).json({ error: "Unauthorized" });
+        const shop = req.query.shop;
+        if (!shop) {
+            console.warn("❌ Missing shop query param");
+            return res.status(401).json({ error: "Unauthorized (missing shop)" });
         }
 
+        const pool = req.app.locals.pgPool;
+        const result = await pool.query(
+            "select access_token from shop_tokens where shop = $1",
+            [shop]
+        );
+
+        const accessToken = result.rows?.[0]?.access_token;
+
+        console.log("VERIFY CHECK -> shop:", shop, "hasToken:", Boolean(accessToken));
+
+        if (!accessToken) {
+            console.warn("❌ Missing shop or access token");
+            return res.status(401).json({ error: "Unauthorized (no token stored). Reinstall app." });
+        }
+
+        // Attach a minimal auth context for downstream usage
         req.shop = shop;
         req.accessToken = accessToken;
 
         next();
-    } catch (error) {
-        console.error("Verification error:", error);
+    } catch (err) {
+        console.error("Verification error:", err);
         return res.status(401).json({ error: "Unauthorized" });
+    }
+}
+
+/**
+ * Webhook verification (HMAC)
+ * NOTE: This expects raw body on req.body (Buffer) for webhooks route.
+ */
+export async function verifyWebhook(req, res, next) {
+    try {
+        const hmac = req.get("X-Shopify-Hmac-Sha256");
+        if (!hmac) return res.status(401).send("Missing HMAC");
+
+        const crypto = await import("crypto");
+        const generated = crypto
+            .createHmac("sha256", process.env.SHOPIFY_API_SECRET)
+            .update(req.body) // raw Buffer
+            .digest("base64");
+
+        if (generated !== hmac) {
+            console.warn("❌ Webhook HMAC failed");
+            return res.status(401).send("Invalid webhook");
+        }
+
+        next();
+    } catch (err) {
+        console.error("Webhook verification error:", err);
+        res.status(401).send("Invalid webhook");
     }
 }
 
