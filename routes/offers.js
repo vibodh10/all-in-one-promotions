@@ -5,9 +5,14 @@ const router = express.Router();
 import { verifyRequest } from "../middleware/auth.js";
 import Offer from "../models/Offer.js";
 import database from "../utils/database.js";
-import { buildShopifySessionFromReq, createDiscount, updateDiscount, deleteDiscount, disableDiscount } from "../utils/shopifyFunctions.js";
+import {
+  createDiscount,
+  updateDiscount,
+  deleteDiscount,
+  disableDiscount,
+} from "../utils/shopifyFunctions.js";
 
-// ✅ All routes protected here
+// 🔒 All routes protected
 router.use(verifyRequest);
 
 /**
@@ -15,7 +20,7 @@ router.use(verifyRequest);
  */
 router.get("/", async (req, res) => {
   try {
-    const shopId = req.query.shop;
+    const shopId = req.shop;
 
     const { status, type } = req.query;
     const filters = { shopId };
@@ -37,10 +42,12 @@ router.get("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const shopId = req.query.shop;
+    const shopId = req.shop;
 
     const offer = await database.getOfferById(id, shopId);
-    if (!offer) return res.status(404).json({ success: false, error: "Offer not found" });
+    if (!offer) {
+      return res.status(404).json({ success: false, error: "Offer not found" });
+    }
 
     res.json({ success: true, data: offer });
   } catch (error) {
@@ -53,11 +60,8 @@ router.get("/:id", async (req, res) => {
  * POST /api/offers
  */
 router.post("/", async (req, res) => {
-  console.log("BODY RECEIVED:", req.body);
-  console.log("QUERY:", req.query);
-
   try {
-    const shopId = req.query.shop;
+    const shopId = req.shop;
 
     const offerData = {
       ...req.body,
@@ -73,14 +77,13 @@ router.post("/", async (req, res) => {
 
     const savedOffer = await database.createOffer(offer.toJSON());
 
-    // ✅ Only create Shopify discount if active
+    // 🚀 If active → create Shopify discount
     if (savedOffer.status === "active") {
-      const shopifySession = buildShopifySessionFromReq(req);
-      if (!shopifySession) return res.status(401).json({ success: false, error: "No Shopify session" });
+      const disc = await createDiscount(
+          { shop: req.shop, accessToken: req.accessToken },
+          savedOffer
+      );
 
-      const disc = await createDiscount({ shop: req.shop, accessToken: req.accessToken }, savedOffer);
-
-      // store ids if you want to manage later
       const updated = await database.updateOffer(savedOffer.id, {
         ...savedOffer,
         shopifyDiscountId: disc.priceRuleId,
@@ -112,13 +115,19 @@ router.post("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const shopId = req.query.shop;
-    const updates = req.body;
+    const shopId = req.shop;
 
     const existingOffer = await database.getOfferById(id, shopId);
-    if (!existingOffer) return res.status(404).json({ success: false, error: "Offer not found" });
+    if (!existingOffer) {
+      return res.status(404).json({ success: false, error: "Offer not found" });
+    }
 
-    const updatedData = { ...existingOffer, ...updates, updatedAt: new Date() };
+    const updatedData = {
+      ...existingOffer,
+      ...req.body,
+      updatedAt: new Date(),
+    };
+
     const offer = new Offer(updatedData);
 
     const validation = offer.validate();
@@ -128,12 +137,11 @@ router.put("/:id", async (req, res) => {
 
     const savedOffer = await database.updateOffer(id, offer.toJSON());
 
-    // If it’s active, refresh discount
     if (savedOffer.status === "active") {
-      const shopifySession = buildShopifySessionFromReq(req);
-      if (!shopifySession) return res.status(401).json({ success: false, error: "No Shopify session" });
-
-      const disc = await updateDiscount({ shop: req.shop, accessToken: req.accessToken }, savedOffer);
+      const disc = await updateDiscount(
+          { shop: req.shop, accessToken: req.accessToken },
+          savedOffer
+      );
 
       const updated = await database.updateOffer(savedOffer.id, {
         ...savedOffer,
@@ -142,10 +150,18 @@ router.put("/:id", async (req, res) => {
         updatedAt: new Date(),
       });
 
-      return res.json({ success: true, data: updated, message: "Offer updated successfully" });
+      return res.json({
+        success: true,
+        data: updated,
+        message: "Offer updated successfully",
+      });
     }
 
-    res.json({ success: true, data: savedOffer, message: "Offer updated successfully" });
+    res.json({
+      success: true,
+      data: savedOffer,
+      message: "Offer updated successfully",
+    });
   } catch (error) {
     console.error("Error updating offer:", error);
     res.status(500).json({ success: false, error: "Failed to update offer" });
@@ -158,15 +174,17 @@ router.put("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const shopId = req.query.shop;
+    const shopId = req.shop;
 
     const offer = await database.getOfferById(id, shopId);
-    if (!offer) return res.status(404).json({ success: false, error: "Offer not found" });
-
-    const shopifySession = buildShopifySessionFromReq(req);
-    if (shopifySession) {
-      await deleteDiscount({ shop: req.shop, accessToken: req.accessToken }, offer);
+    if (!offer) {
+      return res.status(404).json({ success: false, error: "Offer not found" });
     }
+
+    await deleteDiscount(
+        { shop: req.shop, accessToken: req.accessToken },
+        offer
+    );
 
     await database.deleteOffer(id, shopId);
 
@@ -184,7 +202,7 @@ router.patch("/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    const shopId = req.query.shop;
+    const shopId = req.shop;
 
     const validStatuses = ["draft", "active", "paused", "scheduled"];
     if (!validStatuses.includes(status)) {
@@ -192,7 +210,9 @@ router.patch("/:id/status", async (req, res) => {
     }
 
     const offer = await database.getOfferById(id, shopId);
-    if (!offer) return res.status(404).json({ success: false, error: "Offer not found" });
+    if (!offer) {
+      return res.status(404).json({ success: false, error: "Offer not found" });
+    }
 
     const updatedOffer = await database.updateOffer(id, {
       ...offer,
@@ -200,22 +220,30 @@ router.patch("/:id/status", async (req, res) => {
       updatedAt: new Date(),
     });
 
-    const shopifySession = buildShopifySessionFromReq(req);
-    if (shopifySession) {
-      if (status === "active") {
-        const disc = await createDiscount(req, updatedOffer);
-        await database.updateOffer(updatedOffer.id, {
-          ...updatedOffer,
-          shopifyDiscountId: disc.priceRuleId,
-          shopifyDiscountCode: disc.discountCode,
-          updatedAt: new Date(),
-        });
-      } else if (status === "paused") {
-        await disableDiscount({ shop: req.shop, accessToken: req.accessToken }, updatedOffer);
-      }
+    if (status === "active") {
+      const disc = await createDiscount(
+          { shop: req.shop, accessToken: req.accessToken },
+          updatedOffer
+      );
+
+      await database.updateOffer(updatedOffer.id, {
+        ...updatedOffer,
+        shopifyDiscountId: disc.priceRuleId,
+        shopifyDiscountCode: disc.discountCode,
+        updatedAt: new Date(),
+      });
+    } else if (status === "paused") {
+      await disableDiscount(
+          { shop: req.shop, accessToken: req.accessToken },
+          updatedOffer
+      );
     }
 
-    res.json({ success: true, data: updatedOffer, message: `Offer ${status} successfully` });
+    res.json({
+      success: true,
+      data: updatedOffer,
+      message: `Offer ${status} successfully`,
+    });
   } catch (error) {
     console.error("Error updating offer status:", error);
     res.status(500).json({ success: false, error: "Failed to update offer status" });
