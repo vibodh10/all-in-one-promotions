@@ -3,8 +3,7 @@
  * Handles discount creation and management via Shopify REST API (v11+)
  */
 
-import { shopify } from "../shopify.js";
-import {RestClient} from "@shopify/shopify-api/lib/clients/admin/index.js";
+import { RestClient } from "@shopify/shopify-api";
 
 /**
  * Helper: create authenticated REST client for current session
