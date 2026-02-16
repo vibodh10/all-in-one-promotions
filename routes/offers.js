@@ -100,7 +100,7 @@ router.post('/', verifyRequest, async (req, res) => {
 
     // Create Shopify discount if offer is active
     if (savedOffer.status === 'active') {
-      await shopifyFunctions.createDiscount(req.session, savedOffer);
+      await shopifyFunctions.createDiscount(shopId, savedOffer);
     }
 
     res.status(201).json({
@@ -158,7 +158,7 @@ router.put('/:id', async (req, res) => {
     const savedOffer = await database.updateOffer(id, offer.toJSON());
 
     // Update Shopify discount
-    await shopifyFunctions.updateDiscount(req.session, savedOffer);
+    await shopifyFunctions.updateDiscount(shopId, savedOffer);
 
     res.json({
       success: true,
@@ -192,7 +192,7 @@ router.delete('/:id', async (req, res) => {
     }
 
     // Delete Shopify discount
-    await shopifyFunctions.deleteDiscount(req.session, offer);
+    await shopifyFunctions.deleteDiscount(shopId, offer);
 
     // Delete from database
     await database.deleteOffer(id, shopId);
@@ -289,9 +289,9 @@ router.patch('/:id/status', async (req, res) => {
 
     // Handle Shopify discount based on status
     if (status === 'active') {
-      await shopifyFunctions.createDiscount(req.session, updatedOffer);
+      await shopifyFunctions.createDiscount(shopId, updatedOffer);
     } else if (status === 'paused') {
-      await shopifyFunctions.disableDiscount(req.session, updatedOffer);
+      await shopifyFunctions.disableDiscount(shopId, updatedOffer);
     }
 
     res.json({

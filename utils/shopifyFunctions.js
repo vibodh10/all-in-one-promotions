@@ -3,31 +3,29 @@
  * Handles discount creation and management via Shopify REST API (v11+)
  */
 
-import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
-
-// ✅ Initialize Shopify instance once
-const shopify = shopifyApi({
-  apiKey: process.env.VITE_SHOPIFY_API_KEY,
-  apiSecretKey: process.env.SHOPIFY_API_SECRET,
-  scopes: process.env.SHOPIFY_SCOPES.split(","),
-  hostName: process.env.HOST.replace(/https?:\/\//, ""),
-  apiVersion: LATEST_API_VERSION,
-  isEmbeddedApp: true,
-});
+import { shopify } from "../shopify.js";
 
 /**
  * Helper: create authenticated REST client for current session
  */
-function restClient(session) {
+async function restClient(shop) {
+  const sessionId = shopify.session.getOfflineId(shop);
+
+  const session = await shopify.config.sessionStorage.loadSession(sessionId);
+
+  if (!session || !session.accessToken) {
+    throw new Error("No valid Shopify offline session found");
+  }
+
   return new shopify.clients.Rest({ session });
 }
 
 /* ==========================================================
    1️⃣ Create Discount
    ========================================================== */
-export async function createDiscount(session, offer) {
+export async function createDiscount(shop, offer) {
   try {
-    const client = restClient(session);
+    const client = restClient(shop);
 
     if (offer.type === "quantity_break" || offer.type === "volume_discount") {
       return await createQuantityDiscount(client, offer);
