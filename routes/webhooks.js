@@ -1,7 +1,6 @@
 // routes/webhooks.js
 import express from "express";
 import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
-import { verifyWebhook } from "../middleware/auth.js";
 import database from "../utils/database.js";
 
 const router = express.Router();
@@ -16,7 +15,7 @@ const shopify = shopifyApi({
 });
 
 // ✅ App uninstalled
-router.post("/app/uninstalled", verifyWebhook, async (req, res) => {
+router.post("/app/uninstalled", async (req, res) => {
     try {
         const shop = req.body.domain;
         console.log(`App uninstalled for shop: ${shop}`);
