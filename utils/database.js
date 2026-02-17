@@ -1,5 +1,7 @@
 import pool from "./db.js";
 
+const USE_FIREBASE = false
+
 /** Get all offers for a shop */
 async function getOffers(filters = {}) {
     if (USE_FIREBASE) {
