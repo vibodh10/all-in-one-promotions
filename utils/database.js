@@ -97,23 +97,27 @@ async function updateOffer(id, updates) {
         const doc = await pool.collection('offers').doc(id).get();
         return { id: doc.id, ...doc.data() };
     } else {
-        // Convert camelCase to snake_case
         const toSnakeCase = (str) =>
             str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
 
-        const fields = Object.keys(updates);
+        // Remove updatedAt if present (we handle it manually)
+        const cleanedUpdates = { ...updates };
+        delete cleanedUpdates.updatedAt;
+        delete cleanedUpdates.updated_at;
+
+        const fields = Object.keys(cleanedUpdates);
 
         const setClause = fields
             .map((field, i) => `${toSnakeCase(field)} = $${i + 2}`)
             .join(", ");
 
-        const values = fields.map(f => updates[f]);
+        const values = fields.map(f => cleanedUpdates[f]);
 
         const result = await pool.query(
-            `UPDATE offers 
-         SET ${setClause}, updated_at = NOW() 
-         WHERE id = $1 
-         RETURNING *`,
+            `UPDATE offers
+             SET ${setClause}${fields.length ? "," : ""} updated_at = NOW()
+             WHERE id = $1
+                 RETURNING *`,
             [id, ...values]
         );
 
