@@ -286,11 +286,13 @@ async function getOffersByProduct(productId) {
 async function saveShop({ shop, accessToken }) {
     await db.query(
         `
-    INSERT INTO shops (shop, access_token)
-    VALUES ($1, $2)
-    ON CONFLICT (shop)
-    DO UPDATE SET access_token = EXCLUDED.access_token
-    `,
+            INSERT INTO shop_tokens (shop, access_token, updated_at)
+            VALUES ($1, $2, now())
+                ON CONFLICT (shop)
+    DO UPDATE SET
+                access_token = EXCLUDED.access_token,
+                           updated_at = now()
+        `,
         [shop, accessToken]
     );
 }

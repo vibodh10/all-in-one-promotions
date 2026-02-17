@@ -88,12 +88,11 @@ export async function verifyRequest(req, res, next) {
     try {
         const shop = req.query.shop;
 
-        if (!shop) {
-            return res.status(401).json({ error: "Missing shop" });
-        }
+        console.log("VERIFY SHOP VALUE:", shop);
 
-        // 🔥 Always load token from DB
         const shopRecord = await database.getShopByDomain(shop);
+
+        console.log("DB RESULT:", shopRecord);
 
         if (!shopRecord || !shopRecord.access_token) {
             console.log("❌ No token stored in DB");
@@ -102,14 +101,12 @@ export async function verifyRequest(req, res, next) {
             });
         }
 
-        // Attach to request for later use
         req.shop = shop;
         req.accessToken = shopRecord.access_token;
 
         console.log("VERIFY CHECK -> shop:", shop, "hasToken:", true);
 
         next();
-
     } catch (error) {
         console.error("Verify error:", error);
         res.status(401).json({ error: "Unauthorized" });
