@@ -85,10 +85,8 @@ router.post("/", async (req, res) => {
       );
 
       const updated = await database.updateOffer(savedOffer.id, {
-        ...savedOffer,
         shopifyDiscountId: disc.priceRuleId,
         shopifyDiscountCode: disc.discountCode,
-        updatedAt: new Date(),
       });
 
       return res.status(201).json({
