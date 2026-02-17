@@ -13,6 +13,7 @@ import offerRoutes from "./routes/offers.js";
 import analyticsRoutes from "./routes/analytics.js";
 import billingRoutes from "./routes/billing.js";
 import webhookRoutes from "./routes/webhooks.js";
+import pool from "./utils/db.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -92,7 +93,7 @@ app.get("/", async (req, res) => {
     }
 
     try {
-        const result = await app.locals.pgPool.query(
+        const result = await pool.query(
             "select access_token from shop_tokens where shop = $1",
             [shop]
         );
