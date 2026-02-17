@@ -1,647 +1,206 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Page,
     Layout,
     Card,
-    FormLayout,
-    TextField,
-    Select,
+    DataTable,
+    Badge,
     Button,
+    Text,
     BlockStack,
     InlineStack,
-    Text,
-    Divider,
-    ResourceList,
-    ResourceItem,
-    Banner,
-    Thumbnail,
-    Icon
+    ProgressBar
 } from '@shopify/polaris';
-import { DeleteIcon, ImageIcon } from '@shopify/polaris-icons';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-function OfferBuilder() {
+function Dashboard() {
     const navigate = useNavigate();
-    const [step, setStep] = useState(1);
-    const [errors, setErrors] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [metrics, setMetrics] = useState(null);
+    const [topOffers, setTopOffers] = useState([]);
 
-    // Form state
-    const [offerData, setOfferData] = useState({
-        name: '',
-        description: '',
-        type: 'quantity_break',
-        products: [],
-        collections: [],
-        discountType: 'percentage',
-        discountValue: 10,
-        tiers: [
-            { quantity: 2, discount: 10 },
-            { quantity: 3, discount: 15 }
-        ],
-        bundleConfig: {
-            minItems: 2,
-            maxItems: null,
-            allowMixMatch: false
-        },
-        displaySettings: {
-            widget: 'inline',
-            position: 'below_atc',
-            showProgressBar: true,
-            showSavings: true
-        },
-        styling: {
-            primaryColor: '#000000',
-            secondaryColor: '#ffffff',
-            fontFamily: 'inherit',
-            borderRadius: '4px'
-        },
-        status: 'draft'
-    });
+    useEffect(() => {
+        fetchDashboardData();
+    }, []);
 
-    const offerTypes = [
-        { label: 'Quantity Breaks & Free Gift', value: 'quantity_break' },
-        { label: 'Bundle & Save More', value: 'bundle' },
-        { label: 'Volume Discount', value: 'volume_discount' },
-        { label: 'Related Products / Cross-Sell', value: 'cross_sell' }
-    ];
-
-    const discountTypes = [
-        { label: 'Percentage Off', value: 'percentage' },
-        { label: 'Fixed Amount Off', value: 'fixed_amount' }
-    ];
-
-    const widgetTypes = [
-        { label: 'Inline Widget', value: 'inline' },
-        { label: 'Modal Popup', value: 'modal' },
-        { label: 'Side Drawer', value: 'drawer' }
-    ];
-
-    const positionOptions = [
-        { label: 'Below Add to Cart', value: 'below_atc' },
-        { label: 'Above Add to Cart', value: 'above_atc' },
-        { label: 'Product Tabs', value: 'product_tabs' }
-    ];
-
-    const handleChange = (field, value) => {
-        setOfferData(prev => ({
-            ...prev,
-            [field]: value
-        }));
-    };
-
-    const handleNestedChange = (parent, field, value) => {
-        setOfferData(prev => ({
-            ...prev,
-            [parent]: {
-                ...prev[parent],
-                [field]: value
-            }
-        }));
-    };
-
-    // Product Picker Handler
-    const handleProductSelection = useCallback(async () => {
+    const fetchDashboardData = async () => {
         try {
-            // Using Shopify App Bridge for product picker
-            const selected = await window.shopify.resourcePicker({
-                type: 'product',
-                action: 'select',
-                multiple: true,
-                filter: {
-                    variants: false, // Set to true if you want variant selection
-                },
+            setLoading(true);
+
+            const response = await axios.get('/api/analytics/dashboard', {
+                params: { period: '30d' }
             });
 
-            if (selected && selected.length > 0) {
-                const newProducts = selected.map(product => ({
-                    id: product.id,
-                    title: product.title,
-                    handle: product.handle,
-                    images: product.images,
-                    variants: product.variants
-                }));
-
-                setOfferData(prev => ({
-                    ...prev,
-                    products: [...prev.products, ...newProducts.filter(
-                        newProd => !prev.products.some(existingProd => existingProd.id === newProd.id)
-                    )]
-                }));
-            }
+            setMetrics(response.data.data);
+            setTopOffers(response.data.data.topPerformingOffers || []);
         } catch (error) {
-            console.error('Error selecting products:', error);
-            setErrors(['Failed to select products. Please try again.']);
-        }
-    }, []);
-
-    // Collection Picker Handler
-    const handleCollectionSelection = useCallback(async () => {
-        try {
-            const selected = await window.shopify.resourcePicker({
-                type: 'collection',
-                action: 'select',
-                multiple: true,
-            });
-
-            if (selected && selected.length > 0) {
-                const newCollections = selected.map(collection => ({
-                    id: collection.id,
-                    title: collection.title,
-                    handle: collection.handle,
-                    image: collection.image
-                }));
-
-                setOfferData(prev => ({
-                    ...prev,
-                    collections: [...prev.collections, ...newCollections.filter(
-                        newColl => !prev.collections.some(existingColl => existingColl.id === newColl.id)
-                    )]
-                }));
-            }
-        } catch (error) {
-            console.error('Error selecting collections:', error);
-            setErrors(['Failed to select collections. Please try again.']);
-        }
-    }, []);
-
-    // Remove Product Handler
-    const removeProduct = useCallback((productId) => {
-        setOfferData(prev => ({
-            ...prev,
-            products: prev.products.filter(p => p.id !== productId)
-        }));
-    }, []);
-
-    // Remove Collection Handler
-    const removeCollection = useCallback((collectionId) => {
-        setOfferData(prev => ({
-            ...prev,
-            collections: prev.collections.filter(c => c.id !== collectionId)
-        }));
-    }, []);
-
-    const addTier = () => {
-        const lastTier = offerData.tiers[offerData.tiers.length - 1];
-        setOfferData(prev => ({
-            ...prev,
-            tiers: [
-                ...prev.tiers,
-                {
-                    quantity: lastTier.quantity + 1,
-                    discount: lastTier.discount + 5
-                }
-            ]
-        }));
-    };
-
-    const removeTier = (index) => {
-        setOfferData(prev => ({
-            ...prev,
-            tiers: prev.tiers.filter((_, i) => i !== index)
-        }));
-    };
-
-    const updateTier = (index, field, value) => {
-        setOfferData(prev => ({
-            ...prev,
-            tiers: prev.tiers.map((tier, i) =>
-                i === index ? { ...tier, [field]: parseFloat(value) || 0 } : tier
-            )
-        }));
-    };
-
-    const validateStep = (currentStep) => {
-        const newErrors = [];
-
-        if (currentStep === 1) {
-            if (!offerData.name.trim()) {
-                newErrors.push('Offer name is required');
-            }
-            if (!offerData.type) {
-                newErrors.push('Please select an offer type');
-            }
-        }
-
-        if (currentStep === 2) {
-            if (offerData.products.length === 0 && offerData.collections.length === 0) {
-                newErrors.push('Please select at least one product or collection');
-            }
-        }
-
-        if (currentStep === 3) {
-            if (offerData.type === 'quantity_break' && offerData.tiers.length === 0) {
-                newErrors.push('Please add at least one discount tier');
-            }
-        }
-
-        setErrors(newErrors);
-        return newErrors.length === 0;
-    };
-
-    const nextStep = () => {
-        if (validateStep(step)) {
-            setStep(step + 1);
+            console.error('Error fetching dashboard data:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
-    const prevStep = () => {
-        setStep(step - 1);
-        setErrors([]);
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD'
+        }).format(amount);
     };
 
-    const saveOffer = async (publish = false) => {
-        try {
-            const finalOfferData = {
-                ...offerData,
-                status: publish ? 'active' : 'draft'
-            };
+    const formatPercent = (value) => {
+        return `${value.toFixed(2)}%`;
+    };
 
-            const response = await axios.post('/api/offers', finalOfferData);
-
-            if (response.data.success) {
-                navigate('/offers');
-            }
-        } catch (error) {
-            console.error('Error saving offer:', error);
-            setErrors(['Failed to save offer. Please try again.']);
+    const metricCards = [
+        {
+            title: 'Total Offers',
+            value: metrics?.totalOffers || 0,
+            color: 'primary'
+        },
+        {
+            title: 'Impressions',
+            value: metrics?.totalImpressions || 0,
+            color: 'info'
+        },
+        {
+            title: 'Clicks',
+            value: metrics?.totalClicks || 0,
+            color: 'success'
+        },
+        {
+            title: 'Conversions',
+            value: metrics?.totalConversions || 0,
+            color: 'success'
+        },
+        {
+            title: 'Revenue',
+            value: formatCurrency(metrics?.totalRevenue || 0),
+            color: 'success'
+        },
+        {
+            title: 'Conversion Rate',
+            value: formatPercent(metrics?.conversionRate || 0),
+            color: 'warning'
         }
-    };
+    ];
 
-    const renderStep1 = () => (
-        <Card>
-            <BlockStack gap="400">
-                <Text variant="headingMd" as="h2">
-                    Step 1: Offer Type & Basic Info
-                </Text>
-
-                <FormLayout>
-                    <TextField
-                        label="Offer Name"
-                        value={offerData.name}
-                        onChange={(value) => handleChange('name', value)}
-                        placeholder="e.g., Buy 2 Get 10% Off"
-                        autoComplete="off"
-                    />
-
-                    <TextField
-                        label="Description (Optional)"
-                        value={offerData.description}
-                        onChange={(value) => handleChange('description', value)}
-                        placeholder="Describe your offer"
-                        multiline={3}
-                        autoComplete="off"
-                    />
-
-                    <Select
-                        label="Offer Type"
-                        options={offerTypes}
-                        value={offerData.type}
-                        onChange={(value) => handleChange('type', value)}
-                    />
-                </FormLayout>
-            </BlockStack>
-        </Card>
-    );
-
-    const renderStep2 = () => (
-        <Card>
-            <BlockStack gap="400">
-                <Text variant="headingMd" as="h2">
-                    Step 2: Product Selection
-                </Text>
-
-                <Text variant="bodyMd" as="p" tone="subdued">
-                    Select which products this offer applies to. You can select individual products or entire collections.
-                </Text>
-
-                <InlineStack gap="300">
-                    <Button onClick={handleProductSelection}>
-                        Select Products
-                    </Button>
-
-                    <Button onClick={handleCollectionSelection}>
-                        Select Collections
-                    </Button>
-                </InlineStack>
-
-                {/* Selected Products Section */}
-                {offerData.products.length > 0 && (
-                    <BlockStack gap="300">
-                        <Divider />
-                        <Text variant="headingSm" as="h3">
-                            Selected Products ({offerData.products.length})
-                        </Text>
-
-                        <ResourceList
-                            resourceName={{ singular: 'product', plural: 'products' }}
-                            items={offerData.products}
-                            renderItem={(product) => {
-                                const { id, title, images } = product;
-                                const media = images?.[0]?.originalSrc ? (
-                                    <Thumbnail
-                                        source={images[0].originalSrc}
-                                        alt={title}
-                                        size="small"
-                                    />
-                                ) : (
-                                    <Thumbnail
-                                        source={ImageIcon}
-                                        alt={title}
-                                        size="small"
-                                    />
-                                );
-
-                                return (
-                                    <ResourceItem
-                                        id={id}
-                                        media={media}
-                                        accessibilityLabel={`View details for ${title}`}
-                                    >
-                                        <InlineStack align="space-between" blockAlign="center">
-                                            <Text variant="bodyMd" fontWeight="bold" as="h3">
-                                                {title}
-                                            </Text>
-                                            <Button
-                                                plain
-                                                destructive
-                                                icon={DeleteIcon}
-                                                onClick={() => removeProduct(id)}
-                                                accessibilityLabel={`Remove ${title}`}
-                                            >
-                                                Remove
-                                            </Button>
-                                        </InlineStack>
-                                    </ResourceItem>
-                                );
-                            }}
-                        />
-                    </BlockStack>
-                )}
-
-                {/* Selected Collections Section */}
-                {offerData.collections.length > 0 && (
-                    <BlockStack gap="300">
-                        <Divider />
-                        <Text variant="headingSm" as="h3">
-                            Selected Collections ({offerData.collections.length})
-                        </Text>
-
-                        <ResourceList
-                            resourceName={{ singular: 'collection', plural: 'collections' }}
-                            items={offerData.collections}
-                            renderItem={(collection) => {
-                                const { id, title, image } = collection;
-                                const media = image?.src ? (
-                                    <Thumbnail
-                                        source={image.src}
-                                        alt={title}
-                                        size="small"
-                                    />
-                                ) : (
-                                    <Thumbnail
-                                        source={ImageIcon}
-                                        alt={title}
-                                        size="small"
-                                    />
-                                );
-
-                                return (
-                                    <ResourceItem
-                                        id={id}
-                                        media={media}
-                                        accessibilityLabel={`View details for ${title}`}
-                                    >
-                                        <InlineStack align="space-between" blockAlign="center">
-                                            <Text variant="bodyMd" fontWeight="bold" as="h3">
-                                                {title}
-                                            </Text>
-                                            <Button
-                                                plain
-                                                destructive
-                                                icon={DeleteIcon}
-                                                onClick={() => removeCollection(id)}
-                                                accessibilityLabel={`Remove ${title}`}
-                                            >
-                                                Remove
-                                            </Button>
-                                        </InlineStack>
-                                    </ResourceItem>
-                                );
-                            }}
-                        />
-                    </BlockStack>
-                )}
-
-                {/* Empty State */}
-                {offerData.products.length === 0 && offerData.collections.length === 0 && (
-                    <Card background="bg-surface-secondary">
-                        <BlockStack gap="200">
-                            <Text variant="bodyMd" as="p" alignment="center" tone="subdued">
-                                No products or collections selected yet
-                            </Text>
-                            <Text variant="bodySm" as="p" alignment="center" tone="subdued">
-                                Click the buttons above to start selecting
-                            </Text>
-                        </BlockStack>
-                    </Card>
-                )}
-            </BlockStack>
-        </Card>
-    );
-
-    const renderStep3 = () => (
-        <Card>
-            <BlockStack gap="400">
-                <Text variant="headingMd" as="h2">
-                    Step 3: Discount Configuration
-                </Text>
-
-                <FormLayout>
-                    <Select
-                        label="Discount Type"
-                        options={discountTypes}
-                        value={offerData.discountType}
-                        onChange={(value) => handleChange('discountType', value)}
-                    />
-
-                    {offerData.type === 'quantity_break' && (
-                        <BlockStack gap="300">
-                            <Text variant="bodyMd" as="p" fontWeight="semibold">
-                                Discount Tiers
-                            </Text>
-
-                            {offerData.tiers.map((tier, index) => (
-                                <InlineStack key={index} gap="200" align="center">
-                                    <TextField
-                                        label="Quantity"
-                                        type="number"
-                                        value={tier.quantity.toString()}
-                                        onChange={(value) => updateTier(index, 'quantity', value)}
-                                        autoComplete="off"
-                                    />
-
-                                    <TextField
-                                        label="Discount"
-                                        type="number"
-                                        value={tier.discount.toString()}
-                                        onChange={(value) => updateTier(index, 'discount', value)}
-                                        suffix={offerData.discountType === 'percentage' ? '%' : '$'}
-                                        autoComplete="off"
-                                    />
-
-                                    {offerData.tiers.length > 1 && (
-                                        <Button
-                                            onClick={() => removeTier(index)}
-                                            destructive
-                                        >
-                                            Remove
-                                        </Button>
-                                    )}
-                                </InlineStack>
-                            ))}
-
-                            <Button onClick={addTier}>Add Tier</Button>
-                        </BlockStack>
-                    )}
-
-                    {offerData.type === 'bundle' && (
-                        <BlockStack gap="300">
-                            <TextField
-                                label="Minimum Items"
-                                type="number"
-                                value={offerData.bundleConfig.minItems.toString()}
-                                onChange={(value) => handleNestedChange('bundleConfig', 'minItems', parseInt(value) || 1)}
-                                autoComplete="off"
-                            />
-
-                            <TextField
-                                label="Bundle Discount"
-                                type="number"
-                                value={offerData.discountValue.toString()}
-                                onChange={(value) => handleChange('discountValue', parseFloat(value) || 0)}
-                                suffix={offerData.discountType === 'percentage' ? '%' : '$'}
-                                autoComplete="off"
-                            />
-                        </BlockStack>
-                    )}
-                </FormLayout>
-            </BlockStack>
-        </Card>
-    );
-
-    const renderStep4 = () => (
-        <Card>
-            <BlockStack gap="400">
-                <Text variant="headingMd" as="h2">
-                    Step 4: Display Settings
-                </Text>
-
-                <FormLayout>
-                    <Select
-                        label="Widget Type"
-                        options={widgetTypes}
-                        value={offerData.displaySettings.widget}
-                        onChange={(value) => handleNestedChange('displaySettings', 'widget', value)}
-                    />
-
-                    <Select
-                        label="Position"
-                        options={positionOptions}
-                        value={offerData.displaySettings.position}
-                        onChange={(value) => handleNestedChange('displaySettings', 'position', value)}
-                    />
-
-                    <TextField
-                        label="Primary Color"
-                        type="color"
-                        value={offerData.styling.primaryColor}
-                        onChange={(value) => handleNestedChange('styling', 'primaryColor', value)}
-                        autoComplete="off"
-                    />
-
-                    <TextField
-                        label="Border Radius"
-                        value={offerData.styling.borderRadius}
-                        onChange={(value) => handleNestedChange('styling', 'borderRadius', value)}
-                        suffix="px"
-                        autoComplete="off"
-                    />
-                </FormLayout>
-            </BlockStack>
-        </Card>
-    );
+    const offerRows = topOffers.map(offer => [
+        offer.offerName,
+        offer.impressions,
+        offer.clicks,
+        offer.conversions,
+        formatCurrency(offer.revenue),
+        formatPercent(offer.conversionRate)
+    ]);
 
     return (
         <Page
-            title="Create New Offer"
-            backAction={{ content: 'Offers', onAction: () => navigate('/offers') }}
+            title="Dashboard"
+            primaryAction={{
+                content: 'Create Offer',
+                onAction: () => navigate('/offers/new')
+            }}
         >
             <Layout>
                 <Layout.Section>
                     <BlockStack gap="400">
-                        {errors.length > 0 && (
-                            <Banner tone="critical">
-                                <BlockStack gap="200">
-                                    {errors.map((error, index) => (
-                                        <Text key={index} variant="bodyMd" as="p">
-                                            {error}
-                                        </Text>
-                                    ))}
-                                </BlockStack>
-                            </Banner>
-                        )}
+                        <InlineStack gap="400" wrap>
+                            {metricCards.map((metric, index) => (
+                                <div key={index} style={{ flex: '1 1 200px', minWidth: '200px' }}>
+                                    <Card>
+                                        <BlockStack gap="200">
+                                            <Text variant="bodyMd" as="p" color="subdued">
+                                                {metric.title}
+                                            </Text>
+                                            <Text variant="heading2xl" as="h3">
+                                                {metric.value}
+                                            </Text>
+                                        </BlockStack>
+                                    </Card>
+                                </div>
+                            ))}
+                        </InlineStack>
 
                         <Card>
-                            <BlockStack gap="300">
-                                <InlineStack align="space-between">
-                                    {[1, 2, 3, 4].map((s) => (
-                                        <div key={s} style={{ flex: 1, textAlign: 'center' }}>
-                                            <Text
-                                                variant="bodyMd"
-                                                as="p"
-                                                fontWeight={step === s ? 'bold' : 'regular'}
-                                                color={step === s ? 'success' : 'subdued'}
-                                            >
-                                                Step {s}
-                                            </Text>
-                                        </div>
-                                    ))}
+                            <BlockStack gap="400">
+                                <Text variant="headingLg" as="h2">
+                                    Top Performing Offers (Last 30 Days)
+                                </Text>
+
+                                {topOffers.length > 0 ? (
+                                    <DataTable
+                                        columnContentTypes={['text', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric']}
+                                        headings={['Offer Name', 'Impressions', 'Clicks', 'Conversions', 'Revenue', 'Conv. Rate']}
+                                        rows={offerRows}
+                                    />
+                                ) : (
+                                    <Text variant="bodyMd" as="p" color="subdued">
+                                        No offer data available yet. Create your first offer to start tracking performance.
+                                    </Text>
+                                )}
+                            </BlockStack>
+                        </Card>
+
+                        <Card>
+                            <BlockStack gap="400">
+                                <Text variant="headingLg" as="h2">
+                                    Quick Actions
+                                </Text>
+
+                                <InlineStack gap="300">
+                                    <Button onClick={() => navigate('/offers/new')}>
+                                        Create New Offer
+                                    </Button>
+                                    <Button onClick={() => navigate('/offers')}>
+                                        View All Offers
+                                    </Button>
+                                    <Button onClick={() => navigate('/analytics')}>
+                                        View Analytics
+                                    </Button>
                                 </InlineStack>
                             </BlockStack>
                         </Card>
 
-                        {step === 1 && renderStep1()}
-                        {step === 2 && renderStep2()}
-                        {step === 3 && renderStep3()}
-                        {step === 4 && renderStep4()}
-
                         <Card>
-                            <InlineStack align="space-between">
-                                <Button
-                                    onClick={prevStep}
-                                    disabled={step === 1}
-                                >
-                                    Previous
-                                </Button>
+                            <BlockStack gap="300">
+                                <Text variant="headingLg" as="h2">
+                                    Getting Started
+                                </Text>
 
-                                <InlineStack gap="200">
-                                    {step < 4 ? (
-                                        <Button primary onClick={nextStep}>
-                                            Next
-                                        </Button>
-                                    ) : (
-                                        <>
-                                            <Button onClick={() => saveOffer(false)}>
-                                                Save as Draft
-                                            </Button>
-                                            <Button primary onClick={() => saveOffer(true)}>
-                                                Publish Offer
-                                            </Button>
-                                        </>
-                                    )}
-                                </InlineStack>
-                            </InlineStack>
+                                <BlockStack gap="200">
+                                    <div>
+                                        <InlineStack align="space-between">
+                                            <Text variant="bodyMd" as="p">
+                                                1. Create your first offer
+                                            </Text>
+                                            <Badge tone={metrics?.totalOffers > 0 ? 'success' : 'info'}>
+                                                {metrics?.totalOffers > 0 ? 'Complete' : 'Pending'}
+                                            </Badge>
+                                        </InlineStack>
+                                    </div>
+
+                                    <div>
+                                        <InlineStack align="space-between">
+                                            <Text variant="bodyMd" as="p">
+                                                2. Customize your offer design
+                                            </Text>
+                                            <Badge tone="info">Optional</Badge>
+                                        </InlineStack>
+                                    </div>
+
+                                    <div>
+                                        <InlineStack align="space-between">
+                                            <Text variant="bodyMd" as="p">
+                                                3. Publish and track performance
+                                            </Text>
+                                            <Badge tone={metrics?.totalConversions > 0 ? 'success' : 'info'}>
+                                                {metrics?.totalConversions > 0 ? 'Active' : 'Pending'}
+                                            </Badge>
+                                        </InlineStack>
+                                    </div>
+                                </BlockStack>
+                            </BlockStack>
                         </Card>
                     </BlockStack>
                 </Layout.Section>
@@ -650,4 +209,4 @@ function OfferBuilder() {
     );
 }
 
-export default OfferBuilder;
+export default Dashboard;
