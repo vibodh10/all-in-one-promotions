@@ -57,7 +57,7 @@ router.get("/plans", async (req, res) => {
 // ✅ GET /api/billing/current
 router.get("/current", async (req, res) => {
     try {
-        const shopId = req.session.shop;
+        const shopId = req.shop;
         const subscription = await database.getSubscription(shopId);
 
         res.json({

@@ -47,7 +47,7 @@ router.post('/event', async (req, res) => {
       currency,
       metadata,
       timestamp: new Date(),
-      shopId: req.session.shop
+      shopId: req.shop
     };
 
     // Save event to database
@@ -79,7 +79,7 @@ router.get('/offers/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { startDate, endDate } = req.query;
-    const shopId = req.session.shop;
+    const shopId = req.shop;
 
     const offer = await database.getOfferById(id, shopId);
     if (!offer) {
@@ -127,7 +127,7 @@ router.get('/offers/:id', async (req, res) => {
  */
 router.get('/dashboard', async (req, res) => {
   try {
-    const shopId = req.session.shop;
+    const shopId = req.shop;
     const { period = '30d' } = req.query;
 
     // Calculate date range
@@ -258,7 +258,7 @@ router.get('/dashboard', async (req, res) => {
  */
 router.get('/export', async (req, res) => {
   try {
-    const shopId = req.session.shop;
+    const shopId = req.shop;
     const { startDate, endDate, offerIds } = req.query;
 
     const filters = {
