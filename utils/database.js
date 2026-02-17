@@ -296,11 +296,11 @@ async function saveShop({ shop, accessToken }) {
 }
 
 async function getShopByDomain(shop) {
-    const { rows } = await db.query(
-        `SELECT * FROM shops WHERE shop = $1`,
+    const result = await db.query(
+        "select shop, access_token from shop_tokens where shop = $1",
         [shop]
     );
-    return rows[0];
+    return result.rows[0];
 }
 
 
