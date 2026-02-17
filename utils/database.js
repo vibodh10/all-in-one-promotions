@@ -97,12 +97,26 @@ async function updateOffer(id, updates) {
         const doc = await pool.collection('offers').doc(id).get();
         return { id: doc.id, ...doc.data() };
     } else {
+        // Convert camelCase to snake_case
+        const toSnakeCase = (str) =>
+            str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+
         const fields = Object.keys(updates);
-        const setClause = fields.map((field, i) => `${field} = $${i + 2}`).join(', ');
+
+        const setClause = fields
+            .map((field, i) => `${toSnakeCase(field)} = $${i + 2}`)
+            .join(", ");
+
+        const values = fields.map(f => updates[f]);
+
         const result = await pool.query(
-            `UPDATE offers SET ${setClause}, updated_at = NOW() WHERE id = $1 RETURNING *`,
-            [id, ...fields.map(f => updates[f])]
+            `UPDATE offers 
+         SET ${setClause}, updated_at = NOW() 
+         WHERE id = $1 
+         RETURNING *`,
+            [id, ...values]
         );
+
         return result.rows[0];
     }
 }
