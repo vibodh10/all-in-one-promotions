@@ -5,14 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "shopify app dev",
-    "start": "node index.js",
-    "build": "cd frontend && npm install && npm run build",
-    "deploy": "shopify app deploy",
-    "generate": "shopify app generate",
-    "test": "jest",
-    "lint": "eslint . --ext .js,.jsx",
-    "prettier": "prettier --write '**/*.{js,jsx,json,md}'"
+    "start": "node index.js"
   },
   "engines": {
     "node": "18.20.4"
