@@ -49,31 +49,38 @@ router.get("/auth/callback", async (req, res) => {
     try {
         console.log("CALLBACK HIT");
 
-        const session = await shopify.auth.callback({
+        const callbackResponse = await shopify.auth.callback({
             rawRequest: req,
             rawResponse: res,
         });
 
-        console.log("Session shop:", session.shop);
-        console.log("Session token:", session.accessToken);
+        const session = callbackResponse.session;
 
-        const host = req.query.host || session.host || req.query.host;
+        console.log("Session shop:", session?.shop);
+        console.log("Session token:", session?.accessToken);
 
+        if (!session?.shop || !session?.accessToken) {
+            throw new Error("Session missing shop or accessToken");
+        }
+
+        const host = req.query.host;
 
         await pool.query(
             `
-      insert into shop_tokens (shop, access_token, scope, updated_at)
-      values ($1, $2, $3, now())
-      on conflict (shop)
-      do update set access_token = excluded.access_token,
-                    scope = excluded.scope,
-                    updated_at = now()
-      `,
+                insert into shop_tokens (shop, access_token, scope, updated_at)
+                values ($1, $2, $3, now())
+                    on conflict (shop)
+            do update set access_token = excluded.access_token,
+                                       scope = excluded.scope,
+                                       updated_at = now()
+            `,
             [session.shop, session.accessToken, session.scope || null]
         );
 
-        // Redirect into embedded app
-        return res.redirect(`/frontend/?shop=${encodeURIComponent(session.shop)}&host=${encodeURIComponent(host)}`);
+        return res.redirect(
+            `/frontend/?shop=${encodeURIComponent(session.shop)}&host=${encodeURIComponent(host)}`
+        );
+
     } catch (err) {
         console.error("Auth callback error:", err);
         res.status(500).json({ error: "OAuth callback failed" });
