@@ -7,15 +7,12 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import pkg from "pg";
 import authRouter, { verifyRequest } from "./middleware/auth.js";
 
 import offerRoutes from "./routes/offers.js";
 import analyticsRoutes from "./routes/analytics.js";
 import billingRoutes from "./routes/billing.js";
 import webhookRoutes from "./routes/webhooks.js";
-
-const { Pool } = pkg;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -86,15 +83,37 @@ if (isDev) {
 }
 
 // Root: ensure shop exists then go OAuth
-app.get("/", (req, res) => {
+app.get("/", async (req, res) => {
     const shop = req.query.shop;
     const host = req.query.host;
 
-    if (!shop || !host) {
-        return res.status(400).send("Missing shop/host");
+    if (!shop) {
+        return res.status(400).send("Missing shop");
     }
 
-    return res.redirect(302, `/frontend/?shop=${encodeURIComponent(shop)}&host=${encodeURIComponent(host)}`);
+    try {
+        const result = await app.locals.pgPool.query(
+            "select access_token from shop_tokens where shop = $1",
+            [shop]
+        );
+
+        const hasToken = result.rows.length > 0;
+
+        if (!hasToken) {
+            console.log("No token found → redirecting to /auth");
+            return res.redirect(`/auth?shop=${encodeURIComponent(shop)}`);
+        }
+
+        console.log("Token found → loading frontend");
+
+        return res.redirect(
+            `/frontend/?shop=${encodeURIComponent(shop)}&host=${encodeURIComponent(host)}`
+        );
+
+    } catch (err) {
+        console.error("Root route error:", err);
+        return res.status(500).send("Server error");
+    }
 });
 
 // Error handler
