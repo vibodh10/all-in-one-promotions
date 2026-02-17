@@ -1,38 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { AppProvider, Frame, Spinner, Page } from "@shopify/polaris";
+import React from "react";
+import { AppProvider, Frame, Page } from "@shopify/polaris";
 import "@shopify/polaris/build/esm/styles.css";
 import enTranslations from "@shopify/polaris/locales/en.json";
-import { Provider as AppBridgeProvider } from "@shopify/app-bridge-react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import OfferBuilder from "./pages/OfferBuilder.jsx";
 
 export default function App() {
-    const [config, setConfig] = useState(null);
-
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const host = params.get("host");
-        if (host) {
-            setConfig({
-                apiKey: import.meta.env.VITE_SHOPIFY_API_KEY,
-                host,
-                forceRedirect: true,
-            });
-        }
-    }, []);
-
-    if (!config) {
-        return (
-            <AppProvider i18n={enTranslations}>
-                <Frame>
-                    <Page>
-                        <Spinner accessibilityLabel="Loading App" size="large" />
-                    </Page>
-                </Frame>
-            </AppProvider>
-        );
-    }
-
     return (
         <AppProvider i18n={enTranslations}>
             <BrowserRouter basename="/frontend">
