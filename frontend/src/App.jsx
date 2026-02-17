@@ -2,14 +2,14 @@ import React from "react";
 import { AppProvider, Frame, Page } from "@shopify/polaris";
 import "@shopify/polaris/build/esm/styles.css";
 import enTranslations from "@shopify/polaris/locales/en.json";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
 import OfferBuilder from "./pages/OfferBuilder.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 
 export default function App() {
     return (
         <AppProvider i18n={enTranslations}>
-            <BrowserRouter basename="/frontend">
+            <MemoryRouter>
                 <Frame>
                     <Page>
                         <Routes>
@@ -18,7 +18,7 @@ export default function App() {
                         </Routes>
                     </Page>
                 </Frame>
-            </BrowserRouter>
+            </MemoryRouter>
         </AppProvider>
     );
 }
