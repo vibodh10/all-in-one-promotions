@@ -46,6 +46,8 @@ router.get("/auth", async (req, res) => {
  */
 router.get("/auth/callback", async (req, res) => {
     try {
+        console.log("🔥 AUTH CALLBACK HIT");
+
         const session = await shopify.auth.callback({
             rawRequest: req,
             rawResponse: res,
