@@ -3,6 +3,7 @@ import express from "express";
 import "@shopify/shopify-api/adapters/node";
 import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
 import database from "../utils/database.js";
+import pool from "../utils/db.js";
 
 const router = express.Router();
 
@@ -46,21 +47,18 @@ router.get("/auth", async (req, res) => {
  */
 router.get("/auth/callback", async (req, res) => {
     try {
-        console.log("🔥 AUTH CALLBACK HIT");
+        console.log("CALLBACK HIT");
 
         const session = await shopify.auth.callback({
             rawRequest: req,
             rawResponse: res,
         });
 
+        console.log("Session shop:", session.shop);
+        console.log("Session token:", session.accessToken);
+
         const host = req.query.host || session.host || req.query.host;
 
-        // Persist token in DB (Neon)
-        const pool = req.app.locals.pgPool;
-        if (!pool) {
-            console.error("❌ pgPool missing on app.locals");
-            return res.status(500).send("Server misconfigured (pgPool missing)");
-        }
 
         await pool.query(
             `

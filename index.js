@@ -20,13 +20,6 @@ const { Pool } = pkg;
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ✅ One Postgres pool (Neon)
-const pgPool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
-});
-app.locals.pgPool = pgPool;
-
 // ✅ Body parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

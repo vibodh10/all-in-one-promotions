@@ -1,31 +1,9 @@
-import { Pool } from 'pg';
-import admin from 'firebase-admin';
-
-const USE_FIREBASE = Boolean(process.env.FIREBASE_PROJECT_ID);
-
-let db;
-
-if (USE_FIREBASE) {
-    admin.initializeApp({
-        credential: admin.credential.cert({
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-        })
-    });
-
-    db = admin.firestore();
-} else {
-    db = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-    });
-}
+import pool from "./db.js";
 
 /** Get all offers for a shop */
 async function getOffers(filters = {}) {
     if (USE_FIREBASE) {
-        let query = db.collection('offers').where('shopId', '==', filters.shopId);
+        let query = pool.collection('offers').where('shopId', '==', filters.shopId);
         if (filters.status) query = query.where('status', '==', filters.status);
         if (filters.type) query = query.where('type', '==', filters.type);
         const snapshot = await query.get();
@@ -43,7 +21,7 @@ async function getOffers(filters = {}) {
             query += ` AND type = $${paramIndex}`;
             params.push(filters.type);
         }
-        const result = await db.query(query, params);
+        const result = await pool.query(query, params);
         return result.rows;
     }
 }
@@ -51,13 +29,13 @@ async function getOffers(filters = {}) {
 /** Get offer by ID */
 async function getOfferById(id, shopId) {
     if (USE_FIREBASE) {
-        const doc = await db.collection('offers').doc(id).get();
+        const doc = await pool.collection('offers').doc(id).get();
         if (!doc.exists) return null;
         const data = doc.data();
         if (data.shopId !== shopId) return null;
         return { id: doc.id, ...data };
     } else {
-        const result = await db.query(
+        const result = await pool.query(
             'SELECT * FROM offers WHERE id = $1 AND shop_id = $2',
             [id, shopId]
         );
@@ -68,14 +46,14 @@ async function getOfferById(id, shopId) {
 /** Create a new offer */
 async function createOffer(offerData) {
     if (USE_FIREBASE) {
-        const docRef = await db.collection('offers').add({
+        const docRef = await pool.collection('offers').add({
             ...offerData,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
         return { id: docRef.id, ...offerData };
     } else {
-        const result = await db.query(
+        const result = await pool.query(
             `INSERT INTO offers
              (shop_id, type, name, description, status, products, collections,
               discount_type, discount_value, tiers, bundle_config, free_gift,
@@ -110,16 +88,16 @@ async function createOffer(offerData) {
 /** Update an offer */
 async function updateOffer(id, updates) {
     if (USE_FIREBASE) {
-        await db.collection('offers').doc(id).update({
+        await pool.collection('offers').doc(id).update({
             ...updates,
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
-        const doc = await db.collection('offers').doc(id).get();
+        const doc = await pool.collection('offers').doc(id).get();
         return { id: doc.id, ...doc.data() };
     } else {
         const fields = Object.keys(updates);
         const setClause = fields.map((field, i) => `${field} = $${i + 2}`).join(', ');
-        const result = await db.query(
+        const result = await pool.query(
             `UPDATE offers SET ${setClause}, updated_at = NOW() WHERE id = $1 RETURNING *`,
             [id, ...fields.map(f => updates[f])]
         );
@@ -130,23 +108,23 @@ async function updateOffer(id, updates) {
 /** Delete an offer */
 async function deleteOffer(id, shopId) {
     if (USE_FIREBASE) {
-        const doc = await db.collection('offers').doc(id).get();
+        const doc = await pool.collection('offers').doc(id).get();
         if (doc.data().shopId !== shopId) throw new Error('Unauthorized');
-        await db.collection('offers').doc(id).delete();
+        await pool.collection('offers').doc(id).delete();
     } else {
-        await db.query('DELETE FROM offers WHERE id = $1 AND shop_id = $2', [id, shopId]);
+        await pool.query('DELETE FROM offers WHERE id = $1 AND shop_id = $2', [id, shopId]);
     }
 }
 
 /** Save analytics event */
 async function saveAnalyticsEvent(event) {
     if (USE_FIREBASE) {
-        await db.collection('analytics_events').add({
+        await pool.collection('analytics_events').add({
             ...event,
             timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
     } else {
-        await db.query(
+        await pool.query(
             `INSERT INTO analytics_events (event_name, offer_id, product_id, cart_value,
                                            currency, metadata, shop_id, timestamp)
              VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())`,
@@ -166,7 +144,7 @@ async function saveAnalyticsEvent(event) {
 /** Get analytics events */
 async function getAnalyticsEvents(filters = {}) {
     if (USE_FIREBASE) {
-        let query = db.collection('analytics_events').where('shopId', '==', filters.shopId);
+        let query = pool.collection('analytics_events').where('shopId', '==', filters.shopId);
         if (filters.offerId) query = query.where('offerId', '==', filters.offerId);
         if (filters.startDate) query = query.where('timestamp', '>=', filters.startDate);
         if (filters.endDate) query = query.where('timestamp', '<=', filters.endDate);
@@ -179,7 +157,7 @@ async function getAnalyticsEvents(filters = {}) {
         if (filters.offerId) { query += ` AND offer_id = $${paramIndex}`; params.push(filters.offerId); paramIndex++; }
         if (filters.startDate) { query += ` AND timestamp >= $${paramIndex}`; params.push(filters.startDate); paramIndex++; }
         if (filters.endDate) { query += ` AND timestamp <= $${paramIndex}`; params.push(filters.endDate); }
-        const result = await db.query(query, params);
+        const result = await pool.query(query, params);
         return result.rows;
     }
 }
@@ -187,10 +165,10 @@ async function getAnalyticsEvents(filters = {}) {
 /** Get subscription */
 async function getSubscription(shopId) {
     if (USE_FIREBASE) {
-        const doc = await db.collection('subscriptions').doc(shopId).get();
+        const doc = await pool.collection('subscriptions').doc(shopId).get();
         return doc.exists ? doc.data() : null;
     } else {
-        const result = await db.query('SELECT * FROM subscriptions WHERE shop_id = $1', [shopId]);
+        const result = await pool.query('SELECT * FROM subscriptions WHERE shop_id = $1', [shopId]);
         return result.rows[0] || null;
     }
 }
@@ -198,9 +176,9 @@ async function getSubscription(shopId) {
 /** Save subscription */
 async function saveSubscription(subscription) {
     if (USE_FIREBASE) {
-        await db.collection('subscriptions').doc(subscription.shopId).set(subscription, { merge: true });
+        await pool.collection('subscriptions').doc(subscription.shopId).set(subscription, { merge: true });
     } else {
-        await db.query(
+        await pool.query(
             `INSERT INTO subscriptions (shop_id, plan, charge_id, status, price, start_date,
                                         billing_on, trial_ends_on, features, cancelled_at)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
@@ -226,9 +204,9 @@ async function saveSubscription(subscription) {
 /** Save session */
 async function saveSession(session) {
     if (USE_FIREBASE) {
-        await db.collection('sessions').doc(session.id).set(session);
+        await pool.collection('sessions').doc(session.id).set(session);
     } else {
-        await db.query(
+        await pool.query(
             `INSERT INTO sessions (id, shop, access_token, expires_at, data)
              VALUES ($1,$2,$3,$4,$5)
                  ON CONFLICT (id) DO UPDATE SET
@@ -241,10 +219,10 @@ async function saveSession(session) {
 /** Get session */
 async function getSession(id) {
     if (USE_FIREBASE) {
-        const doc = await db.collection('sessions').doc(id).get();
+        const doc = await pool.collection('sessions').doc(id).get();
         return doc.exists ? doc.data() : null;
     } else {
-        const result = await db.query('SELECT * FROM sessions WHERE id=$1', [id]);
+        const result = await pool.query('SELECT * FROM sessions WHERE id=$1', [id]);
         return result.rows[0]?.data || null;
     }
 }
@@ -252,30 +230,30 @@ async function getSession(id) {
 /** Delete shop data */
 async function deleteShopData(shopId) {
     if (USE_FIREBASE) {
-        const batch = db.batch();
-        const offers = await db.collection('offers').where('shopId', '==', shopId).get();
+        const batch = pool.batch();
+        const offers = await pool.collection('offers').where('shopId', '==', shopId).get();
         offers.docs.forEach(doc => batch.delete(doc.ref));
-        const analytics = await db.collection('analytics_events').where('shopId', '==', shopId).get();
+        const analytics = await pool.collection('analytics_events').where('shopId', '==', shopId).get();
         analytics.docs.forEach(doc => batch.delete(doc.ref));
-        batch.delete(db.collection('subscriptions').doc(shopId));
+        batch.delete(pool.collection('subscriptions').doc(shopId));
         await batch.commit();
     } else {
-        await db.query('DELETE FROM offers WHERE shop_id=$1', [shopId]);
-        await db.query('DELETE FROM analytics_events WHERE shop_id=$1', [shopId]);
-        await db.query('DELETE FROM subscriptions WHERE shop_id=$1', [shopId]);
-        await db.query('DELETE FROM sessions WHERE shop=$1', [shopId]);
+        await pool.query('DELETE FROM offers WHERE shop_id=$1', [shopId]);
+        await pool.query('DELETE FROM analytics_events WHERE shop_id=$1', [shopId]);
+        await pool.query('DELETE FROM subscriptions WHERE shop_id=$1', [shopId]);
+        await pool.query('DELETE FROM sessions WHERE shop=$1', [shopId]);
     }
 }
 
 /** Get offers by product ID */
 async function getOffersByProduct(productId) {
     if (USE_FIREBASE) {
-        const snapshot = await db.collection('offers')
+        const snapshot = await pool.collection('offers')
             .where('products', 'array-contains', productId.toString())
             .get();
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } else {
-        const result = await db.query(
+        const result = await pool.query(
             `SELECT * FROM offers WHERE products @> $1::jsonb`,
             [JSON.stringify([productId.toString()])]
         );
@@ -284,7 +262,7 @@ async function getOffersByProduct(productId) {
 }
 
 async function saveShop({ shop, accessToken }) {
-    await db.query(
+    await pool.query(
         `
             INSERT INTO shop_tokens (shop, access_token, updated_at)
             VALUES ($1, $2, now())
@@ -298,7 +276,7 @@ async function saveShop({ shop, accessToken }) {
 }
 
 async function getShopByDomain(shop) {
-    const result = await db.query(
+    const result = await pool.query(
         "select shop, access_token from shop_tokens where shop = $1",
         [shop]
     );
