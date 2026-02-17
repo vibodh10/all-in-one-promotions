@@ -80,7 +80,10 @@ if (isDev) {
 } else {
     const frontendPath = path.join(__dirname, "frontend", "dist");
     app.use("/frontend", express.static(frontendPath));
-    app.get("/frontend/*", (req, res) => res.sendFile(path.join(frontendPath, "index.html")));
+
+    app.get("/frontend*", (req, res) =>
+        res.sendFile(path.join(frontendPath, "index.html"))
+    );
 }
 
 // Root: ensure shop exists then go OAuth
