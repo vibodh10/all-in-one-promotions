@@ -93,6 +93,7 @@ router.get("/auth/callback", async (req, res) => {
  */
 export async function verifyRequest(req, res, next) {
     try {
+        console.log("FULL QUERY OBJECT:", req.query);
         const shop = req.query.shop;
 
         console.log("VERIFY SHOP VALUE:", shop);
