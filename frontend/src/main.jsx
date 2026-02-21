@@ -2,6 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Provider as AppBridgeProvider } from '@shopify/app-bridge-react';
 import App from './App.jsx';
+import axios from "axios";
+
+axios.defaults.withCredentials = true;
 
 const params = new URLSearchParams(window.location.search);
 const host = params.get('host');
