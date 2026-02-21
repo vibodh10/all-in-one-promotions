@@ -6,7 +6,6 @@ import {
     Card,
     FormLayout,
     TextField,
-    Select,
     Button,
     BlockStack,
     InlineStack,
@@ -15,7 +14,6 @@ import {
     ResourceItem,
     Banner,
     Thumbnail,
-    DatePicker,
 } from "@shopify/polaris";
 import { ResourcePicker } from "@shopify/app-bridge/actions";
 import { useNavigate } from "react-router-dom";
@@ -38,6 +36,7 @@ function OfferBuilder() {
         startDate: "",
         endDate: "",
         discountType: "percentage",
+        discountValue: null,
         tiers: [
             { quantity: 2, discount: 10 },
             { quantity: 3, discount: 15 },
@@ -50,7 +49,6 @@ function OfferBuilder() {
             primaryColor: "#000000",
             borderRadius: "4px",
         },
-        status: "draft",
     });
 
     const handleChange = (field, value) =>
@@ -103,10 +101,20 @@ function OfferBuilder() {
         if (s === 1) {
             if (!offerData.name.trim())
                 newErrors.push("Offer name is required");
+
             if (!offerData.startDate)
                 newErrors.push("Start date is required");
+
             if (!offerData.endDate)
                 newErrors.push("End date is required");
+
+            if (
+                offerData.startDate &&
+                offerData.endDate &&
+                new Date(offerData.startDate) >= new Date(offerData.endDate)
+            ) {
+                newErrors.push("Start date must be before end date");
+            }
         }
 
         if (s === 2 && offerData.products.length === 0)
@@ -134,18 +142,42 @@ function OfferBuilder() {
                 name: offerData.name,
                 description: offerData.description,
                 type: offerData.type,
-                products: offerData.products.map(p => p.id),
+                products: offerData.products.map((p) => p.id),
                 collections: [],
                 discountType: offerData.discountType,
                 discountValue: offerData.discountValue,
                 tiers: offerData.tiers,
+                bundleConfig: {
+                    minItems: 1,
+                    maxItems: null,
+                    allowMixMatch: false,
+                    requiredProducts: [],
+                },
+                freeGift: {
+                    enabled: false,
+                    productId: null,
+                    variantId: null,
+                    threshold: null,
+                },
                 displaySettings: offerData.displaySettings,
                 styling: offerData.styling,
-                status: publish ? "active" : "draft",
                 schedule: {
                     startDate: offerData.startDate || null,
-                    endDate: offerData.endDate || null
-                }
+                    endDate: offerData.endDate || null,
+                    timezone: "UTC",
+                },
+                targeting: {
+                    customerGroups: [],
+                    countries: [],
+                    excludeProducts: [],
+                },
+                analytics: {
+                    impressions: 0,
+                    clicks: 0,
+                    conversions: 0,
+                    revenue: 0,
+                },
+                status: publish ? "active" : "draft",
             };
 
             const params = new URLSearchParams(window.location.search);
@@ -153,9 +185,9 @@ function OfferBuilder() {
             const host = params.get("host");
 
             const response = await fetchFunction(
-                `/api/offers?shop=${encodeURIComponent(
-                    shop
-                )}&host=${encodeURIComponent(host)}`,
+                `/api/offers?shop=${encodeURIComponent(shop)}&host=${encodeURIComponent(
+                    host
+                )}`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },

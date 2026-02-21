@@ -69,25 +69,19 @@ router.post("/", async (req, res) => {
     });
 
     const validation = offer.validate();
+
     if (!validation.isValid) {
-      return res.status(400).json({ error: validation.errors.join(", ") });
-    }
-
-    const overlap = await database.hasOverlappingOffer(
-        shopId,
-        offer.products,
-        offer.schedule
-    );
-
-    if (overlap) {
       return res.status(400).json({
-        error: "An overlapping offer already exists for one or more selected products"
+        error: validation.errors.join(", ")
       });
     }
 
     const created = await database.createOffer(offer.toJSON());
 
-    res.status(201).json({ success: true, data: created });
+    res.status(201).json({
+      success: true,
+      data: created
+    });
 
   } catch (error) {
     console.error("POST offer error:", error);
