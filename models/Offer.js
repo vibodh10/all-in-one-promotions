@@ -11,8 +11,7 @@ class Offer {
     this.name = data.name;
     this.description = data.description || '';
     this.status = data.status || 'draft'; // 'draft', 'active', 'paused', 'scheduled'
-    this.priority = data.priority || 0;
-    
+
     // Product selection
     this.products = data.products || []; // Array of product IDs
     this.collections = data.collections || []; // Array of collection IDs
@@ -264,7 +263,6 @@ class Offer {
       name: this.name,
       description: this.description,
       status: this.status,
-      priority: this.priority,
       products: this.products,
       collections: this.collections,
       discountType: this.discountType,

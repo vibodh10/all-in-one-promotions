@@ -49,7 +49,6 @@ CREATE TABLE IF NOT EXISTS offers (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     status VARCHAR(50) NOT NULL DEFAULT 'draft',
-    priority INTEGER DEFAULT 0,
     products JSONB DEFAULT '[]',
     collections JSONB DEFAULT '[]',
     discount_type VARCHAR(50),

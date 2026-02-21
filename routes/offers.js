@@ -61,49 +61,49 @@ router.get("/:id", async (req, res) => {
  */
 router.post("/", async (req, res) => {
   try {
-    const shopId = req.shop;
+    const { productId, startDate, endDate } = req.body;
 
-    const offerData = {
-      ...req.body,
-      shopId,
-    };
-
-    const offer = new Offer(offerData);
-
-    const validation = offer.validate();
-    if (!validation.isValid) {
-      return res.status(400).json({ success: false, errors: validation.errors });
+    if (!productId || !startDate || !endDate) {
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const savedOffer = await database.createOffer(offer.toJSON());
+    const newStart = new Date(startDate);
+    const newEnd = new Date(endDate);
 
-    // 🚀 If active → create Shopify discount
-    if (savedOffer.status === "active") {
-      const disc = await createDiscount(
-          { shop: req.shop, accessToken: req.accessToken },
-          savedOffer
-      );
-
-      const updated = await database.updateOffer(savedOffer.id, {
-        shopifyDiscountId: disc.priceRuleId,
-        shopifyDiscountCode: disc.discountCode,
-      });
-
-      return res.status(201).json({
-        success: true,
-        data: updated,
-        message: "Offer created successfully",
-      });
+    if (newStart >= newEnd) {
+      return res.status(400).json({ error: "Start date must be before end date" });
     }
 
-    return res.status(201).json({
-      success: true,
-      data: savedOffer,
-      message: "Offer created successfully",
+    // 🔥 Check for overlapping offers
+    const overlapping = await db.query.offers.findFirst({
+      where: (offers, { and, eq, lte, gte }) =>
+          and(
+              eq(offers.productId, productId),
+
+              // overlap condition
+              lte(offers.startDate, newEnd),
+              gte(offers.endDate, newStart)
+          )
     });
+
+    if (overlapping) {
+      return res.status(400).json({
+        error: "An overlapping offer already exists for this product"
+      });
+    }
+
+    const created = await db.insert(offers).values({
+      productId,
+      startDate: newStart,
+      endDate: newEnd,
+      ...req.body
+    }).returning();
+
+    res.status(201).json(created[0]);
+
   } catch (error) {
-    console.error("Error creating offer:", error);
-    res.status(500).json({ success: false, error: "Failed to create offer" });
+    console.error("POST offer error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -113,84 +113,52 @@ router.post("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const shopId = req.shop;
+    const { productId, startDate, endDate } = req.body;
 
-    const existingOffer = await database.getOfferById(id, shopId);
-    if (!existingOffer) {
-      return res.status(404).json({ success: false, error: "Offer not found" });
+    if (!productId || !startDate || !endDate) {
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const updatedData = {
-      ...existingOffer,
-      ...req.body,
-      shopId,
-      updatedAt: new Date(),
-    };
+    const newStart = new Date(startDate);
+    const newEnd = new Date(endDate);
 
-    const offer = new Offer(updatedData);
-
-    const validation = offer.validate();
-    if (!validation.isValid) {
-      return res.status(400).json({ success: false, errors: validation.errors });
+    if (newStart >= newEnd) {
+      return res.status(400).json({ error: "Start date must be before end date" });
     }
 
-    const savedOffer = await database.updateOffer(id, offer.toJSON());
+    // 🔥 Check overlap but EXCLUDE current offer
+    const overlapping = await db.query.offers.findFirst({
+      where: (offers, { and, eq, lte, gte, ne }) =>
+          and(
+              eq(offers.productId, productId),
+              ne(offers.id, Number(id)), // 👈 critical line
 
-    if (savedOffer.status === "active") {
-      const disc = await updateDiscount(
-          { shop: req.shop, accessToken: req.accessToken },
-          savedOffer
-      );
-
-      const updated = await database.updateOffer(savedOffer.id, {
-        ...savedOffer,
-        shopifyDiscountId: disc.priceRuleId,
-        shopifyDiscountCode: disc.discountCode,
-        updatedAt: new Date(),
-      });
-
-      return res.json({
-        success: true,
-        data: updated,
-        message: "Offer updated successfully",
-      });
-    }
-
-    res.json({
-      success: true,
-      data: savedOffer,
-      message: "Offer updated successfully",
+              lte(offers.startDate, newEnd),
+              gte(offers.endDate, newStart)
+          )
     });
-  } catch (error) {
-    console.error("Error updating offer:", error);
-    res.status(500).json({ success: false, error: "Failed to update offer" });
-  }
-});
 
-/**
- * DELETE /api/offers/:id
- */
-router.delete("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const shopId = req.shop;
-
-    const offer = await database.getOfferById(id, shopId);
-    if (!offer) {
-      return res.status(404).json({ success: false, error: "Offer not found" });
+    if (overlapping) {
+      return res.status(400).json({
+        error: "Another overlapping offer already exists"
+      });
     }
 
-    await deleteDiscount(
-        { shop: req.shop, accessToken: req.accessToken },
-        offer
-    );
+    const updated = await db.update(offers)
+        .set({
+          productId,
+          startDate: newStart,
+          endDate: newEnd,
+          ...req.body
+        })
+        .where(eq(offers.id, Number(id)))
+        .returning();
 
-    await database.deleteOffer(id, shopId);
+    res.json(updated[0]);
 
-    res.json({ success: true, message: "Offer deleted successfully" });
   } catch (error) {
-    console.error("Error deleting offer:", error);
-    res.status(500).json({ success: false, error: "Failed to delete offer" });
+    console.error("PUT offer error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
