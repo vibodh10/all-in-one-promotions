@@ -147,8 +147,8 @@ function OfferEdit() {
             setError(null);
             setSuccess(null);
 
-            await axios.put(
-                `/api/offers/${id}`,
+            await api.put(
+                `/offers/${id}`,
                 offerData,
                 {  }
             );
@@ -176,7 +176,7 @@ function OfferEdit() {
             setSaving(true);
             setError(null);
 
-            await axios.delete(`/api/offers/${id}`, {
+            await api.delete(`/offers/${id}`, {
                 
             });
 

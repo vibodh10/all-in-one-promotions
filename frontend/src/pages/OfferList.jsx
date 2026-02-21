@@ -15,7 +15,6 @@ import {
     BlockStack
 } from '@shopify/polaris';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import api from "../api/axios.js";
 
 function OfferList() {
@@ -54,8 +53,8 @@ function OfferList() {
 
     const handleStatusChange = async (offerId, newStatus) => {
         try {
-            await axios.patch(
-                `/api/offers/${offerId}/status`,
+            await api.patch(
+                `/offers/${offerId}/status`,
                 { status: newStatus },
                 {  }
             );
@@ -70,8 +69,8 @@ function OfferList() {
 
     const handleDuplicate = async (offerId) => {
         try {
-            await axios.post(
-                `/api/offers/${offerId}/duplicate`,
+            await api.post(
+                `/offers/${offerId}/duplicate`,
                 {},
                 {  }
             );
@@ -90,7 +89,7 @@ function OfferList() {
         }
 
         try {
-            await axios.delete(`/api/offers/${offerId}`, {
+            await api.delete(`/api/offers/${offerId}`, {
                 
             });
 
