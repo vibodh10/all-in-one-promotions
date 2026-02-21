@@ -123,6 +123,7 @@ router.put("/:id", async (req, res) => {
     const updatedData = {
       ...existingOffer,
       ...req.body,
+      shopId,
       updatedAt: new Date(),
     };
 
