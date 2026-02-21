@@ -16,6 +16,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 
 import axios from 'axios';
+import api from "../api/axios.js";
 
 function OfferEdit() {
     const navigate = useNavigate();
@@ -82,8 +83,8 @@ function OfferEdit() {
             setLoading(true);
             setError(null);
 
-            const response = await axios.get(`/api/offers/${id}`, {
-                
+            const response = await api.get(`/offers/${id}`, {
+
             });
 
             setOfferData(response.data.data);
