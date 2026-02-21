@@ -8,11 +8,10 @@ import {
     Button,
     Text,
     BlockStack,
-    InlineStack,
-    ProgressBar
+    InlineStack
 } from '@shopify/polaris';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from "../api/axios.js";
 
 function Dashboard() {
     const navigate = useNavigate();
@@ -28,11 +27,8 @@ function Dashboard() {
         try {
             setLoading(true);
 
-            const params = new URLSearchParams(window.location.search);
-            const shop = params.get("shop");
-
-            const response = await axios.get('/api/analytics/dashboard', {
-                params: { period: '30d', shop: shop },
+            const response = await api.get('/analytics/dashboard', {
+                params: { period: '30d' },
             });
 
             setMetrics(response.data.data);
@@ -56,36 +52,12 @@ function Dashboard() {
     };
 
     const metricCards = [
-        {
-            title: 'Total Offers',
-            value: metrics?.totalOffers || 0,
-            color: 'primary'
-        },
-        {
-            title: 'Impressions',
-            value: metrics?.totalImpressions || 0,
-            color: 'info'
-        },
-        {
-            title: 'Clicks',
-            value: metrics?.totalClicks || 0,
-            color: 'success'
-        },
-        {
-            title: 'Conversions',
-            value: metrics?.totalConversions || 0,
-            color: 'success'
-        },
-        {
-            title: 'Revenue',
-            value: formatCurrency(metrics?.totalRevenue || 0),
-            color: 'success'
-        },
-        {
-            title: 'Conversion Rate',
-            value: formatPercent(metrics?.conversionRate || 0),
-            color: 'warning'
-        }
+        { title: 'Total Offers', value: metrics?.totalOffers || 0 },
+        { title: 'Impressions', value: metrics?.totalImpressions || 0 },
+        { title: 'Clicks', value: metrics?.totalClicks || 0 },
+        { title: 'Conversions', value: metrics?.totalConversions || 0 },
+        { title: 'Revenue', value: formatCurrency(metrics?.totalRevenue || 0) },
+        { title: 'Conversion Rate', value: formatPercent(metrics?.conversionRate || 0) }
     ];
 
     const offerRows = topOffers.map(offer => [
@@ -107,13 +79,15 @@ function Dashboard() {
         >
             <Layout>
                 <Layout.Section>
-                    <BlockStack gap="400">
+                    <BlockStack gap="500">
+
+                        {/* Metrics */}
                         <InlineStack gap="400" wrap>
                             {metricCards.map((metric, index) => (
                                 <div key={index} style={{ flex: '1 1 200px', minWidth: '200px' }}>
                                     <Card>
                                         <BlockStack gap="200">
-                                            <Text variant="bodyMd" as="p" color="subdued">
+                                            <Text variant="bodyMd" as="p" tone="subdued">
                                                 {metric.title}
                                             </Text>
                                             <Text variant="heading2xl" as="h3">
@@ -125,6 +99,34 @@ function Dashboard() {
                             ))}
                         </InlineStack>
 
+                        {/* Navigation Section */}
+                        <Card>
+                            <BlockStack gap="400">
+                                <Text variant="headingLg" as="h2">
+                                    Manage Your App
+                                </Text>
+
+                                <InlineStack gap="300" wrap>
+                                    <Button onClick={() => navigate('/offers')} size="large">
+                                        Manage Offers
+                                    </Button>
+
+                                    <Button onClick={() => navigate('/offers/new')} size="large">
+                                        Create Offer
+                                    </Button>
+
+                                    <Button onClick={() => navigate('/analytics')} size="large">
+                                        View Analytics
+                                    </Button>
+
+                                    <Button onClick={() => navigate('/settings')} size="large">
+                                        App Settings
+                                    </Button>
+                                </InlineStack>
+                            </BlockStack>
+                        </Card>
+
+                        {/* Top Offers */}
                         <Card>
                             <BlockStack gap="400">
                                 <Text variant="headingLg" as="h2">
@@ -138,73 +140,36 @@ function Dashboard() {
                                         rows={offerRows}
                                     />
                                 ) : (
-                                    <Text variant="bodyMd" as="p" color="subdued">
+                                    <Text variant="bodyMd" as="p" tone="subdued">
                                         No offer data available yet. Create your first offer to start tracking performance.
                                     </Text>
                                 )}
                             </BlockStack>
                         </Card>
 
-                        <Card>
-                            <BlockStack gap="400">
-                                <Text variant="headingLg" as="h2">
-                                    Quick Actions
-                                </Text>
-
-                                <InlineStack gap="300">
-                                    <Button onClick={() => navigate('/offers/new')}>
-                                        Create New Offer
-                                    </Button>
-                                    <Button onClick={() => navigate('/offers')}>
-                                        View All Offers
-                                    </Button>
-                                    <Button onClick={() => navigate('/analytics')}>
-                                        View Analytics
-                                    </Button>
-                                </InlineStack>
-                            </BlockStack>
-                        </Card>
-
+                        {/* Getting Started */}
                         <Card>
                             <BlockStack gap="300">
                                 <Text variant="headingLg" as="h2">
                                     Getting Started
                                 </Text>
 
-                                <BlockStack gap="200">
-                                    <div>
-                                        <InlineStack align="space-between">
-                                            <Text variant="bodyMd" as="p">
-                                                1. Create your first offer
-                                            </Text>
-                                            <Badge tone={metrics?.totalOffers > 0 ? 'success' : 'info'}>
-                                                {metrics?.totalOffers > 0 ? 'Complete' : 'Pending'}
-                                            </Badge>
-                                        </InlineStack>
-                                    </div>
+                                <InlineStack align="space-between">
+                                    <Text>Create your first offer</Text>
+                                    <Badge tone={metrics?.totalOffers > 0 ? 'success' : 'info'}>
+                                        {metrics?.totalOffers > 0 ? 'Complete' : 'Pending'}
+                                    </Badge>
+                                </InlineStack>
 
-                                    <div>
-                                        <InlineStack align="space-between">
-                                            <Text variant="bodyMd" as="p">
-                                                2. Customize your offer design
-                                            </Text>
-                                            <Badge tone="info">Optional</Badge>
-                                        </InlineStack>
-                                    </div>
-
-                                    <div>
-                                        <InlineStack align="space-between">
-                                            <Text variant="bodyMd" as="p">
-                                                3. Publish and track performance
-                                            </Text>
-                                            <Badge tone={metrics?.totalConversions > 0 ? 'success' : 'info'}>
-                                                {metrics?.totalConversions > 0 ? 'Active' : 'Pending'}
-                                            </Badge>
-                                        </InlineStack>
-                                    </div>
-                                </BlockStack>
+                                <InlineStack align="space-between">
+                                    <Text>Activate your offer</Text>
+                                    <Badge tone={metrics?.totalConversions > 0 ? 'success' : 'info'}>
+                                        {metrics?.totalConversions > 0 ? 'Active' : 'Pending'}
+                                    </Badge>
+                                </InlineStack>
                             </BlockStack>
                         </Card>
+
                     </BlockStack>
                 </Layout.Section>
             </Layout>
