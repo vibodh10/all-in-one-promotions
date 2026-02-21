@@ -28,8 +28,11 @@ function Dashboard() {
         try {
             setLoading(true);
 
+            const params = new URLSearchParams(window.location.search);
+            const shop = params.get("shop");
+
             const response = await axios.get('/api/analytics/dashboard', {
-                params: { period: '30d' }
+                params: { period: '30d', shop: shop },
             });
 
             setMetrics(response.data.data);
