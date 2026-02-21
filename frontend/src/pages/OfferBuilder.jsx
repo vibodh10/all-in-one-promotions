@@ -399,7 +399,7 @@ function OfferBuilder() {
     return (
         <Page
             title="Create New Offer"
-            backAction={{ content: 'Offers', onAction: () => navigate('/offers') }}
+            backAction={{ content: 'Offers', onAction: () => navigate('/') }}
         >
             <Layout>
                 <Layout.Section>
