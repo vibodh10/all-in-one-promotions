@@ -61,45 +61,33 @@ router.get("/:id", async (req, res) => {
  */
 router.post("/", async (req, res) => {
   try {
-    const { productId, startDate, endDate } = req.body;
+    const shopId = req.shop;
 
-    if (!productId || !startDate || !endDate) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    const newStart = new Date(startDate);
-    const newEnd = new Date(endDate);
-
-    if (newStart >= newEnd) {
-      return res.status(400).json({ error: "Start date must be before end date" });
-    }
-
-    // 🔥 Check for overlapping offers
-    const overlapping = await db.query.offers.findFirst({
-      where: (offers, { and, eq, lte, gte }) =>
-          and(
-              eq(offers.productId, productId),
-
-              // overlap condition
-              lte(offers.startDate, newEnd),
-              gte(offers.endDate, newStart)
-          )
+    const offer = new Offer({
+      ...req.body,
+      shopId
     });
 
-    if (overlapping) {
+    const validation = offer.validate();
+    if (!validation.isValid) {
+      return res.status(400).json({ error: validation.errors.join(", ") });
+    }
+
+    const overlap = await database.hasOverlappingOffer(
+        shopId,
+        offer.products,
+        offer.schedule
+    );
+
+    if (overlap) {
       return res.status(400).json({
-        error: "An overlapping offer already exists for this product"
+        error: "An overlapping offer already exists for one or more selected products"
       });
     }
 
-    const created = await db.insert(offers).values({
-      productId,
-      startDate: newStart,
-      endDate: newEnd,
-      ...req.body
-    }).returning();
+    const created = await database.createOffer(offer.toJSON());
 
-    res.status(201).json(created[0]);
+    res.status(201).json({ success: true, data: created });
 
   } catch (error) {
     console.error("POST offer error:", error);
@@ -113,48 +101,40 @@ router.post("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { productId, startDate, endDate } = req.body;
+    const shopId = req.shop;
 
-    if (!productId || !startDate || !endDate) {
-      return res.status(400).json({ error: "Missing required fields" });
+    const existing = await database.getOfferById(id, shopId);
+    if (!existing) {
+      return res.status(404).json({ error: "Offer not found" });
     }
 
-    const newStart = new Date(startDate);
-    const newEnd = new Date(endDate);
-
-    if (newStart >= newEnd) {
-      return res.status(400).json({ error: "Start date must be before end date" });
-    }
-
-    // 🔥 Check overlap but EXCLUDE current offer
-    const overlapping = await db.query.offers.findFirst({
-      where: (offers, { and, eq, lte, gte, ne }) =>
-          and(
-              eq(offers.productId, productId),
-              ne(offers.id, Number(id)), // 👈 critical line
-
-              lte(offers.startDate, newEnd),
-              gte(offers.endDate, newStart)
-          )
+    const updatedOffer = new Offer({
+      ...existing,
+      ...req.body,
+      shopId
     });
 
-    if (overlapping) {
+    const validation = updatedOffer.validate();
+    if (!validation.isValid) {
+      return res.status(400).json({ error: validation.errors.join(", ") });
+    }
+
+    const overlap = await database.hasOverlappingOffer(
+        shopId,
+        updatedOffer.products,
+        updatedOffer.schedule,
+        id
+    );
+
+    if (overlap) {
       return res.status(400).json({
         error: "Another overlapping offer already exists"
       });
     }
 
-    const updated = await db.update(offers)
-        .set({
-          productId,
-          startDate: newStart,
-          endDate: newEnd,
-          ...req.body
-        })
-        .where(eq(offers.id, Number(id)))
-        .returning();
+    const saved = await database.updateOffer(id, updatedOffer.toJSON());
 
-    res.json(updated[0]);
+    res.json({ success: true, data: saved });
 
   } catch (error) {
     console.error("PUT offer error:", error);
@@ -214,6 +194,36 @@ router.patch("/:id/status", async (req, res) => {
   } catch (error) {
     console.error("Error updating offer status:", error);
     res.status(500).json({ success: false, error: "Failed to update offer status" });
+  }
+});
+
+/**
+ * GET /api/offers/active-for-product/:productId
+ * Returns active offers for a specific product
+ */
+router.get("/active-for-product/:productId", async (req, res) => {
+  try {
+    const shopId = req.shop;
+    const { productId } = req.params;
+
+    // Get all offers for shop that include this product
+    const offers = await database.getOffersByProduct(productId, shopId);
+
+    const activeOffers = offers.filter(o => {
+      const offer = new Offer(o);
+
+      // Only return active offers
+      if (offer.status !== "active") return false;
+
+      // Check schedule + targeting logic
+      return offer.shouldDisplay([{ productId }]);
+    });
+
+    res.json({ success: true, data: activeOffers });
+
+  } catch (err) {
+    console.error("Error fetching active offers:", err);
+    res.status(500).json({ error: "Failed to fetch offers" });
   }
 });
 

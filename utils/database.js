@@ -266,19 +266,14 @@ async function deleteShopData(shopId) {
 }
 
 /** Get offers by product ID */
-async function getOffersByProduct(productId) {
-    if (USE_FIREBASE) {
-        const snapshot = await pool.collection('offers')
-            .where('products', 'array-contains', productId.toString())
-            .get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } else {
-        const result = await pool.query(
-            `SELECT * FROM offers WHERE products @> $1::jsonb`,
-            [JSON.stringify([productId.toString()])]
-        );
-        return result.rows;
-    }
+async function getOffersByProduct(productId, shopId) {
+    const result = await pool.query(
+        `SELECT * FROM offers
+         WHERE shop_id = $1
+         AND products @> $2::jsonb`,
+        [shopId, JSON.stringify([productId.toString()])]
+    );
+    return result.rows;
 }
 
 async function saveShop({ shop, accessToken }) {
@@ -303,6 +298,48 @@ async function getShopByDomain(shop) {
     return result.rows[0];
 }
 
+async function hasOverlappingOffer(shopId, products, schedule, excludeId = null) {
+    const result = await pool.query(
+        `SELECT * FROM offers WHERE shop_id = $1`,
+        [shopId]
+    );
+
+    const offers = result.rows;
+
+    for (const offer of offers) {
+        if (excludeId && offer.id == excludeId) continue;
+
+        const existingProducts = offer.products || [];
+
+        const productOverlap = products.some(p => existingProducts.includes(p));
+        if (!productOverlap) continue;
+
+        const existingSchedule = offer.schedule || {};
+        const newSchedule = schedule || {};
+
+        // Continuous offer logic
+        if (!existingSchedule.startDate && !existingSchedule.endDate) {
+            return true;
+        }
+        if (!newSchedule.startDate && !newSchedule.endDate) {
+            return true;
+        }
+
+        const existingStart = existingSchedule.startDate ? new Date(existingSchedule.startDate) : null;
+        const existingEnd = existingSchedule.endDate ? new Date(existingSchedule.endDate) : null;
+        const newStart = newSchedule.startDate ? new Date(newSchedule.startDate) : null;
+        const newEnd = newSchedule.endDate ? new Date(newSchedule.endDate) : null;
+
+        if (existingStart && existingEnd && newStart && newEnd) {
+            if (existingStart <= newEnd && existingEnd >= newStart) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 
 const database = {
     getOffers,
@@ -319,7 +356,8 @@ const database = {
     saveSession,
     getSession,
     deleteShopData,
-    getOffersByProduct
+    getOffersByProduct,
+    hasOverlappingOffer
 };
 
 export default database;

@@ -130,21 +130,22 @@ function OfferBuilder() {
                 return;
             }
 
-            // Extract first product ID
-            const productId = offerData.products[0].id;
-
             const payload = {
                 name: offerData.name,
                 description: offerData.description,
                 type: offerData.type,
-                productId,
-                startDate: offerData.startDate,
-                endDate: offerData.endDate,
+                products: offerData.products.map(p => p.id),
+                collections: [],
                 discountType: offerData.discountType,
+                discountValue: offerData.discountValue,
                 tiers: offerData.tiers,
                 displaySettings: offerData.displaySettings,
                 styling: offerData.styling,
                 status: publish ? "active" : "draft",
+                schedule: {
+                    startDate: offerData.startDate || null,
+                    endDate: offerData.endDate || null
+                }
             };
 
             const params = new URLSearchParams(window.location.search);
