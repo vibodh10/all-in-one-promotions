@@ -6,7 +6,15 @@ const shop = params.get("shop");
 const api = axios.create({
     baseURL: "/api",
     withCredentials: true,
-    params: { shop }
+});
+
+// Automatically append shop to every request
+api.interceptors.request.use((config) => {
+    config.params = {
+        ...config.params,
+        shop,
+    };
+    return config;
 });
 
 export default api;
