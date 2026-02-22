@@ -98,37 +98,31 @@ router.put("/:id", async (req, res) => {
     const shopId = req.shop;
 
     const existing = await database.getOfferById(id, shopId);
+
     if (!existing) {
       return res.status(404).json({ error: "Offer not found" });
     }
 
     const updatedOffer = new Offer({
-      ...existing,
       ...req.body,
-      shopId
+      shopId,
+      id
     });
 
     const validation = updatedOffer.validate();
+
     if (!validation.isValid) {
-      return res.status(400).json({ error: validation.errors.join(", ") });
-    }
-
-    const overlap = await database.hasOverlappingOffer(
-        shopId,
-        updatedOffer.products,
-        updatedOffer.schedule,
-        id
-    );
-
-    if (overlap) {
       return res.status(400).json({
-        error: "Another overlapping offer already exists"
+        error: validation.errors.join(", ")
       });
     }
 
     const saved = await database.updateOffer(id, updatedOffer.toJSON());
 
-    res.json({ success: true, data: saved });
+    res.json({
+      success: true,
+      data: saved
+    });
 
   } catch (error) {
     console.error("PUT offer error:", error);
