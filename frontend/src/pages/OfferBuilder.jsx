@@ -102,12 +102,15 @@ function OfferBuilder() {
             if (!offerData.name.trim())
                 newErrors.push("Offer name is required");
 
-            if (!offerData.startDate)
-                newErrors.push("Start date is required");
+            // If one date exists, both must exist
+            if (
+                (offerData.startDate && !offerData.endDate) ||
+                (!offerData.startDate && offerData.endDate)
+            ) {
+                newErrors.push("Both start and end date must be provided");
+            }
 
-            if (!offerData.endDate)
-                newErrors.push("End date is required");
-
+            // If both provided, validate order
             if (
                 offerData.startDate &&
                 offerData.endDate &&
