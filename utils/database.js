@@ -89,40 +89,47 @@ async function createOffer(offerData) {
 
 /** Update an offer */
 async function updateOffer(id, updates) {
-    if (USE_FIREBASE) {
-        await pool.collection('offers').doc(id).update({
-            ...updates,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-        const doc = await pool.collection('offers').doc(id).get();
-        return { id: doc.id, ...doc.data() };
-    } else {
-        const toSnakeCase = (str) =>
-            str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+    const toSnakeCase = (str) =>
+        str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
 
-        // Remove updatedAt if present (we handle it manually)
-        const cleanedUpdates = { ...updates };
-        delete cleanedUpdates.updatedAt;
-        delete cleanedUpdates.updated_at;
+    const cleanedUpdates = { ...updates };
+    delete cleanedUpdates.updatedAt;
+    delete cleanedUpdates.updated_at;
 
-        const fields = Object.keys(cleanedUpdates);
+    const jsonFields = [
+        "products",
+        "collections",
+        "tiers",
+        "bundleConfig",
+        "freeGift",
+        "displaySettings",
+        "styling",
+        "schedule",
+        "targeting",
+        "analytics"
+    ];
 
-        const setClause = fields
-            .map((field, i) => `${toSnakeCase(field)} = $${i + 2}`)
-            .join(", ");
+    const fields = Object.keys(cleanedUpdates);
 
-        const values = fields.map(f => cleanedUpdates[f]);
+    const setClause = fields
+        .map((field, i) => `${toSnakeCase(field)} = $${i + 2}`)
+        .join(", ");
 
-        const result = await pool.query(
-            `UPDATE offers
-             SET ${setClause}${fields.length ? "," : ""} updated_at = NOW()
-             WHERE id = $1
-                 RETURNING *`,
-            [id, ...values]
-        );
+    const values = fields.map((f) =>
+        jsonFields.includes(f)
+            ? JSON.stringify(cleanedUpdates[f])
+            : cleanedUpdates[f]
+    );
 
-        return result.rows[0];
-    }
+    const result = await pool.query(
+        `UPDATE offers
+     SET ${setClause}${fields.length ? "," : ""} updated_at = NOW()
+     WHERE id = $1
+     RETURNING *`,
+        [id, ...values]
+    );
+
+    return result.rows[0];
 }
 
 /** Delete an offer */
