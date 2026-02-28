@@ -253,7 +253,6 @@ router.post("/:id/duplicate", async (req, res) => {
       return res.status(404).json({ error: "Offer not found" });
     }
 
-    // Remove fields that must not be copied
     const {
       id: _id,
       created_at,
@@ -267,15 +266,16 @@ router.post("/:id/duplicate", async (req, res) => {
 
     const duplicatedOffer = {
       ...rest,
+      shopId: shopId, // ✅ IMPORTANT
       name: `${original.name} (Copy)`,
-      status: "draft", // 🚨 always draft
+      status: "draft"
     };
 
     const created = await database.createOffer(duplicatedOffer);
 
     res.json({
       success: true,
-      data: created,
+      data: created
     });
 
   } catch (err) {
