@@ -139,49 +139,16 @@ router.patch("/:id/status", async (req, res) => {
     const { status } = req.body;
     const shopId = req.shop;
 
-    const validStatuses = ["draft", "active", "paused", "scheduled"];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ success: false, error: "Invalid status" });
+    if (!["active", "paused", "draft"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
     }
 
-    const offer = await database.getOfferById(id, shopId);
-    if (!offer) {
-      return res.status(404).json({ success: false, error: "Offer not found" });
-    }
+    const updated = await database.updateOffer(id, { status });
 
-    const updatedOffer = await database.updateOffer(id, {
-      ...offer,
-      status,
-      updatedAt: new Date(),
-    });
-
-    if (status === "active") {
-      const disc = await createDiscount(
-          { shop: req.shop, accessToken: req.accessToken },
-          updatedOffer
-      );
-
-      await database.updateOffer(updatedOffer.id, {
-        ...updatedOffer,
-        shopifyDiscountId: disc.priceRuleId,
-        shopifyDiscountCode: disc.discountCode,
-        updatedAt: new Date(),
-      });
-    } else if (status === "paused") {
-      await disableDiscount(
-          { shop: req.shop, accessToken: req.accessToken },
-          updatedOffer
-      );
-    }
-
-    res.json({
-      success: true,
-      data: updatedOffer,
-      message: `Offer ${status} successfully`,
-    });
-  } catch (error) {
-    console.error("Error updating offer status:", error);
-    res.status(500).json({ success: false, error: "Failed to update offer status" });
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    console.error("Status update error:", err);
+    res.status(500).json({ error: "Failed to update status" });
   }
 });
 
