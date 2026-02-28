@@ -18,24 +18,17 @@ router.get("/offers", async (req, res) => {
   try {
     let { productId, shop } = req.query;
 
-// Normalize productId to full GID
-    if (!productId.startsWith("gid://")) {
-      productId = `gid://shopify/Product/${productId}`;
-    }
-
     if (!productId || !shop) {
       return res.status(400).json({ error: "Missing productId or shop" });
     }
 
-    // Make sure shop isolation is respected
-    const offers = await database.getOffersByProduct(productId);
+    if (!productId.startsWith("gid://")) {
+      productId = `gid://shopify/Product/${productId}`;
+    }
 
-    const activeOffers = offers.filter(
-        (offer) =>
-            offer.status === "active"
-    );
+    const offers = await database.getOffersByProduct(productId, shop);
 
-    res.json({ offers: activeOffers });
+    res.json({ offers });
 
   } catch (err) {
     console.error("Storefront offers error:", err);
