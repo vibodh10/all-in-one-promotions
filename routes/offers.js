@@ -13,13 +13,10 @@ import {
 } from "../utils/shopifyFunctions.js";
 import pool from "../utils/db.js";
 
-// 🔒 All routes protected
-router.use(verifyRequest);
-
 /**
  * GET /api/offers
  */
-router.get("/", async (req, res) => {
+router.get("/", verifyRequest, async (req, res) => {
   try {
     const shopId = req.shop;
 
@@ -40,7 +37,7 @@ router.get("/", async (req, res) => {
 /**
  * GET /api/offers/:id
  */
-router.get("/:id", async (req, res) => {
+router.get("/:id", verifyRequest, async (req, res) => {
   try {
     const { id } = req.params;
     const shopId = req.shop;
@@ -60,7 +57,7 @@ router.get("/:id", async (req, res) => {
 /**
  * POST /api/offers
  */
-router.post("/", async (req, res) => {
+router.post("/", verifyRequest, async (req, res) => {
   try {
     const shopId = req.shop;
 
@@ -107,7 +104,7 @@ router.post("/", async (req, res) => {
 /**
  * PUT /api/offers/:id
  */
-router.put("/:id", async (req, res) => {
+router.put("/:id", verifyRequest, async (req, res) => {
   try {
     const { id } = req.params;
     const shopId = req.shop;
@@ -148,7 +145,7 @@ router.put("/:id", async (req, res) => {
 /**
  * PATCH /api/offers/:id/status
  */
-router.patch("/:id/status", async (req, res) => {
+router.patch("/:id/status", verifyRequest, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -198,7 +195,7 @@ router.patch("/:id/status", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", verifyRequest, async (req, res) => {
   try {
     const { id } = req.params;
     const shopId = req.shop;
@@ -216,7 +213,7 @@ router.delete("/:id", async (req, res) => {
  * GET /api/offers/active-for-product/:productId
  * Returns active offers for a specific product
  */
-router.get("/active-for-product/:productId", async (req, res) => {
+router.get("/active-for-product/:productId", verifyRequest, async (req, res) => {
   try {
     const shopId = req.shop;
     const { productId } = req.params;
