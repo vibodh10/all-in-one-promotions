@@ -16,7 +16,12 @@ import pool from "../utils/db.js";
 // Storefront offers (App Proxy)
 router.get("/offers", async (req, res) => {
   try {
-    const { productId, shop } = req.query;
+    let { productId, shop } = req.query;
+
+// Normalize productId to full GID
+    if (!productId.startsWith("gid://")) {
+      productId = `gid://shopify/Product/${productId}`;
+    }
 
     if (!productId || !shop) {
       return res.status(400).json({ error: "Missing productId or shop" });
