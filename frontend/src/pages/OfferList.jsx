@@ -132,7 +132,9 @@ function OfferList() {
         offer.analytics?.impressions || 0,
         offer.analytics?.clicks || 0,
         offer.analytics?.conversions || 0,
-        new Date(offer.createdAt).toLocaleDateString(),
+        offer.created_at
+            ? new Date(offer.created_at).toLocaleDateString()
+            : "-",
         <ButtonGroup>
             <Button size="slim" onClick={() => navigate(`/offers/${offer.id}/edit`)}>
                 Edit
