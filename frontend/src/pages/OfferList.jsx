@@ -87,17 +87,18 @@ function OfferList() {
 
     const handleDuplicate = async (offerId) => {
         try {
-            await api.post(
-                `/offers/${offerId}/duplicate`,
-                {},
-                {  }
-            );
+            const response = await api.post(`/offers/${offerId}/duplicate`);
 
-            // Refresh offers list
-            fetchOffers();
+            fetchOffers(); // refresh list
+
         } catch (err) {
-            console.error('Error duplicating offer:', err);
-            setError('Failed to duplicate offer.');
+            console.error("Error duplicating offer:", err);
+
+            if (err.response?.data?.error) {
+                setError(err.response.data.error);
+            } else {
+                setError("Failed to duplicate offer.");
+            }
         }
     };
 

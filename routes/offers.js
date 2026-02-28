@@ -242,4 +242,46 @@ router.get("/active-for-product/:productId", async (req, res) => {
   }
 });
 
+router.post("/:id/duplicate", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const shopId = req.shop;
+
+    const original = await database.getOfferById(id, shopId);
+
+    if (!original) {
+      return res.status(404).json({ error: "Offer not found" });
+    }
+
+    // Remove fields that must not be copied
+    const {
+      id: _id,
+      created_at,
+      updated_at,
+      impressions,
+      clicks,
+      conversions,
+      revenue,
+      ...rest
+    } = original;
+
+    const duplicatedOffer = {
+      ...rest,
+      name: `${original.name} (Copy)`,
+      status: "draft", // 🚨 always draft
+    };
+
+    const created = await database.createOffer(duplicatedOffer);
+
+    res.json({
+      success: true,
+      data: created,
+    });
+
+  } catch (err) {
+    console.error("Duplicate offer error:", err);
+    res.status(500).json({ error: "Failed to duplicate offer" });
+  }
+});
+
 export default router;
