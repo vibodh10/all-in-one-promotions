@@ -321,7 +321,12 @@ function OfferEdit() {
                                         <TextField
                                             label="Bundle Discount"
                                             type="number"
-                                            value={offerData.discountValue.toString()}
+                                            value={
+                                                offerData.discountValue !== null &&
+                                                offerData.discountValue !== undefined
+                                                    ? offerData.discountValue.toString()
+                                                    : ""
+                                            }
                                             onChange={(value) => handleChange('discountValue', parseFloat(value) || 0)}
                                             suffix={offerData.discountType === 'percentage' ? '%' : '$'}
                                             autoComplete="off"
