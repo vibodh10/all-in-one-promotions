@@ -32,8 +32,7 @@ router.get("/offers", async (req, res) => {
 
     const activeOffers = offers.filter(
         (offer) =>
-            offer.status === "active" &&
-            offer.shop_id === shop
+            offer.status === "active"
     );
 
     res.json({ offers: activeOffers });
