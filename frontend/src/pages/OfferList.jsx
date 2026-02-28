@@ -53,17 +53,35 @@ function OfferList() {
 
     const handleStatusChange = async (offerId, newStatus) => {
         try {
-            await api.patch(
+            const response = await api.patch(
                 `/offers/${offerId}/status`,
-                { status: newStatus },
-                {  }
+                { status: newStatus }
             );
 
-            // Refresh offers list
+            // Refresh offers list after successful update
             fetchOffers();
+
         } catch (err) {
-            console.error('Error updating offer status:', err);
-            setError('Failed to update offer status.');
+            console.error("Error updating offer status:", err);
+
+            // If backend returned structured error
+            if (err.response && err.response.data) {
+                const backendMessage = err.response.data.error;
+
+                if (backendMessage) {
+                    if (backendMessage.includes("already exists")) {
+                        setError(
+                            "An active offer already exists for one or more of the selected products. Please pause it before activating this one."
+                        );
+                    } else {
+                        setError(backendMessage);
+                    }
+                    return;
+                }
+            }
+
+            // Fallback message
+            setError("Unable to update offer status. Please try again.");
         }
     };
 
