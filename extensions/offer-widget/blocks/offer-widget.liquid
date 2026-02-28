@@ -1,0 +1,30 @@
+{% if product %}
+  <div
+    id="smart-offer-root"
+    data-product-id="{{ product.id }}"
+    data-shop="{{ shop.permanent_domain }}">
+  </div>
+
+  <script>
+    (function() {
+      const container = document.getElementById("smart-offer-root");
+      if (!container) return;
+
+      const productId = container.dataset.productId;
+      const shop = container.dataset.shop;
+
+      fetch(`/apps/promotions/storefront/offers?productId=${productId}&shop=${shop}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.offers || data.offers.length === 0) return;
+
+          container.innerHTML = `
+            <div style="padding:12px;border:1px solid #ddd;margin-top:10px;">
+              <strong>${data.offers[0].name}</strong>
+            </div>
+          `;
+        })
+        .catch(err => console.error("Offer fetch error:", err));
+    })();
+  </script>
+{% endif %}

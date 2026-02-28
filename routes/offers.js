@@ -284,4 +284,30 @@ router.post("/:id/duplicate", async (req, res) => {
   }
 });
 
+// Storefront offers (App Proxy)
+router.get("/offers", async (req, res) => {
+  try {
+    const { productId, shop } = req.query;
+
+    if (!productId || !shop) {
+      return res.status(400).json({ error: "Missing productId or shop" });
+    }
+
+    // Make sure shop isolation is respected
+    const offers = await database.getOffersByProduct(productId);
+
+    const activeOffers = offers.filter(
+        (offer) =>
+            offer.status === "active" &&
+            offer.shop_id === shop
+    );
+
+    res.json({ offers: activeOffers });
+
+  } catch (err) {
+    console.error("Storefront offers error:", err);
+    res.status(500).json({ error: "Failed to fetch offers" });
+  }
+});
+
 export default router;

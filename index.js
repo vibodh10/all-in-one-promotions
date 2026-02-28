@@ -61,6 +61,7 @@ app.use(authRouter);
 
 // ✅ API routes (must include verifyRequest)
 app.use("/api/offers", verifyRequest, offerRoutes);
+app.use("/storefront", offerRoutes);
 app.use("/api/analytics", verifyRequest, analyticsRoutes);
 app.use("/api/billing", verifyRequest, billingRoutes);
 
