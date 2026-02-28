@@ -89,7 +89,7 @@ function OfferList() {
         }
 
         try {
-            await api.delete(`/api/offers/${offerId}`, {
+            await api.delete(`/offers/${offerId}`, {
                 
             });
 

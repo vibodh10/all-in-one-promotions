@@ -198,6 +198,20 @@ router.patch("/:id/status", async (req, res) => {
   }
 });
 
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const shopId = req.shop;
+
+    await database.deleteOffer(id, shopId);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Delete offer error:", err);
+    res.status(500).json({ error: "Failed to delete offer" });
+  }
+});
+
 /**
  * GET /api/offers/active-for-product/:productId
  * Returns active offers for a specific product
