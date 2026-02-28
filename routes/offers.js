@@ -11,6 +11,7 @@ import {
   deleteDiscount,
   disableDiscount,
 } from "../utils/shopifyFunctions.js";
+import pool from "../utils/db.js";
 
 // 🔒 All routes protected
 router.use(verifyRequest);
@@ -157,9 +158,40 @@ router.patch("/:id/status", async (req, res) => {
       return res.status(400).json({ error: "Invalid status" });
     }
 
+    // 🚨 If activating, check duplicates
+    if (status === "active") {
+      const offer = await database.getOfferById(id, shopId);
+
+      if (!offer) {
+        return res.status(404).json({ error: "Offer not found" });
+      }
+
+      const productIds = offer.products || [];
+
+      for (const productId of productIds) {
+        const conflicts = await pool.query(
+            `
+          SELECT id FROM offers
+          WHERE shop_id = $1
+          AND status = 'active'
+          AND id != $2
+          AND products @> $3::jsonb
+          `,
+            [shopId, id, JSON.stringify([productId])]
+        );
+
+        if (conflicts.rows.length > 0) {
+          return res.status(400).json({
+            error: "Another active offer already exists for this product."
+          });
+        }
+      }
+    }
+
     const updated = await database.updateOffer(id, { status });
 
     res.json({ success: true, data: updated });
+
   } catch (err) {
     console.error("Status update error:", err);
     res.status(500).json({ error: "Failed to update status" });
