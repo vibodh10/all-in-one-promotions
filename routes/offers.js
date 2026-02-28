@@ -80,14 +80,9 @@ router.post("/", async (req, res) => {
     // Only block if new offer is being created as ACTIVE
     if (offer.status === "active" && offer.products?.length > 0) {
       for (const productId of offer.products) {
-        const existingOffers = await database.getOffersByProduct(productId);
+        const conflicts = await database.getOffersByProduct(productId, shopId);
 
-        const conflictingOffer = existingOffers.find(o =>
-            o.status === "active" &&
-            o.shop_id === shopId
-        );
-
-        if (conflictingOffer) {
+        if (conflicts.length > 0) {
           return res.status(400).json({
             error: "An active offer already exists for one or more selected products."
           });

@@ -275,11 +275,15 @@ async function deleteShopData(shopId) {
 /** Get offers by product ID */
 async function getOffersByProduct(productId, shopId) {
     const result = await pool.query(
-        `SELECT * FROM offers
-         WHERE shop_id = $1
-         AND products @> $2::jsonb`,
-        [shopId, JSON.stringify([productId.toString()])]
+        `
+            SELECT * FROM offers
+            WHERE shop_id = $1
+              AND status = 'active'
+              AND products @> $2::jsonb
+        `,
+        [shopId, JSON.stringify([productId])]
     );
+
     return result.rows;
 }
 
