@@ -76,6 +76,25 @@ router.post("/", async (req, res) => {
       });
     }
 
+    // 🚨 DUPLICATE ACTIVE OFFER CHECK
+    // Only block if new offer is being created as ACTIVE
+    if (offer.status === "active" && offer.products?.length > 0) {
+      for (const productId of offer.products) {
+        const existingOffers = await database.getOffersByProduct(productId);
+
+        const conflictingOffer = existingOffers.find(o =>
+            o.status === "active" &&
+            o.shop_id === shopId
+        );
+
+        if (conflictingOffer) {
+          return res.status(400).json({
+            error: "An active offer already exists for one or more selected products."
+          });
+        }
+      }
+    }
+
     const created = await database.createOffer(offer.toJSON());
 
     res.status(201).json({
