@@ -99,13 +99,22 @@ export async function createDiscount(auth, offer) {
     }
   };
 
-  const priceRuleRes = await shopifyRest({
-    shop,
-    accessToken,
-    method: "POST",
-    path: "price_rules",
-    data: priceRulePayload,
-  });
+  console.log("Entitled IDs:", entitledIds);
+
+  let priceRuleRes;
+
+  try {
+    priceRuleRes = await shopifyRest({
+      shop,
+      accessToken,
+      method: "POST",
+      path: "price_rules",
+      data: priceRulePayload,
+    });
+  } catch (err) {
+    console.error("Shopify price rule error:", err.response?.data || err);
+    throw err;
+  }
 
   const priceRuleId = priceRuleRes?.price_rule?.id;
   if (!priceRuleId) throw new Error("Price rule not created");
