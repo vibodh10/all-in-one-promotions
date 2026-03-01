@@ -39,27 +39,24 @@ async function shopifyRest({ shop, accessToken, method, path, data }) {
 }
 
 export async function createDiscount(auth, offer) {
-  const { shop, accessToken } = auth || {};
-  if (!shop || !accessToken) throw new Error("Missing shop or access token");
+  const { shop, accessToken } = auth;
+  if (!shop || !accessToken) {
+    throw new Error("Missing shop or access token");
+  }
 
-  console.log("Creating discount for:", offer.id);
-
-  // Normalize fields (snake_case support)
   const discountType = offer.discount_type || offer.discountType;
   const discountValue = offer.discount_value || offer.discountValue;
   const bundleConfig = offer.bundle_config || offer.bundleConfig;
   const tiers = offer.tiers || [];
 
-  const entitledIds =
-      Array.isArray(offer.products)
-          ? offer.products
-              .map(p =>
-                  typeof p === "object"
-                      ? gidToNumericId(p.id)
-                      : gidToNumericId(p)
-              )
-              .filter(Boolean)
-          : [];
+  const minQty =
+      offer.type === "bundle"
+          ? bundleConfig?.minItems || 2
+          : tiers?.[0]?.quantity || 1;
+
+  const entitledProductGids = (offer.products || []).map(p =>
+      typeof p === "string" ? p : p.id
+  );
 
   const discountCode =
       offer.type === "bundle"
@@ -68,68 +65,87 @@ export async function createDiscount(auth, offer) {
               ? `CROSSSELL_${offer.id}`
               : `SMARTOFFER_${offer.id}`;
 
-  const valueType =
-      discountType === "percentage" ? "percentage" : "fixed_amount";
+  const mutation = `
+    mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
+      discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
+        codeDiscountNode {
+          id
+          codeDiscount {
+            ... on DiscountCodeBasic {
+              codes(first: 1) {
+                nodes {
+                  code
+                }
+              }
+            }
+          }
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  `;
 
-  const value = `-${Number(discountValue || 0)}`;
-
-  const startsAt = offer.schedule?.startDate || new Date().toISOString();
-  const endsAt = offer.schedule?.endDate || null;
-
-  const minQty =
-      offer.type === "bundle"
-          ? bundleConfig?.minItems || 2
-          : tiers?.[0]?.quantity || 1;
-
-  const priceRulePayload = {
-    price_rule: {
+  const variables = {
+    basicCodeDiscount: {
       title: offer.name,
-      target_type: "line_item",
-      target_selection: "entitled",
-      allocation_method: "across",
-      value_type: valueType,
-      value,
-      customer_selection: "all",
-      entitled_product_ids: entitledIds,
-      starts_at: startsAt,
-      ends_at: endsAt,
-      prerequisite_quantity_range: {
-        greater_than_or_equal_to: minQty
+      code: discountCode,
+      startsAt: new Date().toISOString(),
+      customerSelection: {
+        all: true
+      },
+      customerGets: {
+        items: {
+          products: entitledProductGids
+        },
+        value: discountType === "percentage"
+            ? { percentage: discountValue / 100 }
+            : { discountAmount: { amount: discountValue, appliesOnEachItem: false } }
+      },
+      minimumRequirement: {
+        quantity: {
+          greaterThanOrEqualToQuantity: minQty
+        }
       }
     }
   };
 
-  console.log("Entitled IDs:", entitledIds);
+  const response = await fetch(
+      `https://${shop}/admin/api/2024-01/graphql.json`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Access-Token": accessToken
+        },
+        body: JSON.stringify({ query: mutation, variables })
+      }
+  );
 
-  let priceRuleRes;
+  const result = await response.json();
 
-  try {
-    priceRuleRes = await shopifyRest({
-      shop,
-      accessToken,
-      method: "POST",
-      path: "price_rules",
-      data: priceRulePayload,
-    });
-  } catch (err) {
-    console.error("Shopify price rule error:", err.response?.data || err);
-    throw err;
+  if (result.errors) {
+    console.error("GraphQL errors:", result.errors);
+    throw new Error("GraphQL discount creation failed");
   }
 
-  const priceRuleId = priceRuleRes?.price_rule?.id;
-  if (!priceRuleId) throw new Error("Price rule not created");
+  const userErrors =
+      result.data.discountCodeBasicCreate.userErrors;
 
-  await shopifyRest({
-    shop,
-    accessToken,
-    method: "POST",
-    path: `price_rules/${priceRuleId}/discount_codes`,
-    data: {
-      discount_code: { code: discountCode }
-    },
-  });
+  if (userErrors.length > 0) {
+    console.error("Discount user errors:", userErrors);
+    throw new Error(userErrors[0].message);
+  }
 
-  return { priceRuleId, discountCode };
+  const node =
+      result.data.discountCodeBasicCreate.codeDiscountNode;
+
+  return {
+    priceRuleId: node.id,
+    discountCode
+  };
 }
 
 export async function deleteDiscount(auth, offer) {
