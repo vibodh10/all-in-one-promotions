@@ -1,49 +1,114 @@
 {% if template.name == 'product' and product %}
-  <div
-    id="smart-offer-root"
-    data-product-id="gid://shopify/Product/{{ product.id }}"
-    data-shop="{{ shop.permanent_domain }}">
-  </div>
 
-  <script>
-    (function() {
-      const container = document.getElementById("smart-offer-root");
-      if (!container) return;
+<div
+  id="aio-offer-root"
+  class="aio-offer-container"
+  data-product-id="gid://shopify/Product/{{ product.id }}"
+  data-shop="{{ shop.permanent_domain }}">
+</div>
 
-      const productId = container.dataset.productId;
-      const shop = container.dataset.shop;
+<style>
+.aio-offer-container {
+  margin-top: 16px;
+}
 
-      fetch(`/apps/promotions/storefront/offers?productId=${productId}&shop=${shop}`)
-        .then(res => res.json())
-        .then(data => {
-          if (!data.offers || data.offers.length === 0) return;
+.aio-offer-card {
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  padding: 20px;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+}
 
-          container.innerHTML = `
-            <div style="padding:12px;border:1px solid #ddd;margin-top:10px;">
-              <strong>${data.offers[0].name}</strong>
+.aio-offer-header {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.aio-offer-description {
+  font-size: 14px;
+  margin-bottom: 10px;
+  color: #555;
+}
+
+.aio-offer-discount {
+  font-weight: 600;
+  color: #0a7f5a;
+  margin-bottom: 14px;
+}
+
+.aio-offer-button {
+  background: #000;
+  color: #fff;
+  padding: 12px;
+  border-radius: 6px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 14px;
+}
+</style>
+
+<script>
+(function() {
+
+  const container = document.getElementById("aio-offer-root");
+  if (!container) return;
+
+  const productId = container.dataset.productId;
+  const shop = container.dataset.shop;
+
+  fetch(`/apps/promotions/storefront/offers?productId=${productId}&shop=${shop}`)
+    .then(res => res.json())
+    .then(data => {
+
+      if (!data.offers || data.offers.length === 0) {
+        container.style.display = "none";
+        return;
+      }
+
+      const offer = data.offers[0];
+
+      const discountValue = offer.discount_value || 0;
+      const minItems = offer.bundle_config?.minItems || 1;
+      const description = offer.description || "";
+
+      container.innerHTML = `
+        <div class="aio-offer-card">
+
+          <div class="aio-offer-header">
+            🎁 ${offer.name}
+          </div>
+
+          ${description ? `
+            <div class="aio-offer-description">
+              ${description}
             </div>
-          `;
-        })
-        .catch(err => console.error("Offer fetch error:", err));
-    })();
-  </script>
+          ` : ''}
+
+          <div class="aio-offer-discount">
+            Save ${discountValue}% when you buy ${minItems}+
+          </div>
+
+          <div class="aio-offer-button">
+            Add Bundle to Cart
+          </div>
+
+        </div>
+      `;
+
+    })
+    .catch(err => console.error("Offer fetch error:", err));
+
+})();
+</script>
+
 {% endif %}
 
 {% schema %}
 {
   "name": "Offer Widget",
   "target": "section",
-  "settings": [
-    {
-      "type": "select",
-      "id": "position",
-      "label": "Widget position",
-      "options": [
-        { "value": "above_atc", "label": "Above Add to Cart" },
-        { "value": "below_atc", "label": "Below Add to Cart" }
-      ],
-      "default": "below_atc"
-    }
-  ]
+  "settings": []
 }
 {% endschema %}

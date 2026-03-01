@@ -70,6 +70,9 @@ router.get("/:id", verifyRequest, async (req, res) => {
 /**
  * POST /api/offers
  */
+/**
+ * POST /api/offers
+ */
 router.post("/", verifyRequest, async (req, res) => {
   try {
     const shopId = req.shop;
@@ -87,8 +90,7 @@ router.post("/", verifyRequest, async (req, res) => {
       });
     }
 
-    // 🚨 DUPLICATE ACTIVE OFFER CHECK
-    // Only block if new offer is being created as ACTIVE
+    // 🚨 Duplicate active check
     if (offer.status === "active" && offer.products?.length > 0) {
       for (const productId of offer.products) {
         const conflicts = await database.getOffersByProduct(productId, shopId);
@@ -101,7 +103,33 @@ router.post("/", verifyRequest, async (req, res) => {
       }
     }
 
+    // 1️⃣ Create offer in DB first
     const created = await database.createOffer(offer.toJSON());
+
+    // 2️⃣ If status is active → create Shopify discount
+    if (created.status === "active") {
+      try {
+        const disc = await createDiscount(
+            { shop: req.shop, accessToken: req.accessToken },
+            created
+        );
+
+        await database.updateOffer(created.id, {
+          shopify_discount_id: disc.priceRuleId,
+          shopify_discount_code: disc.discountCode
+        });
+
+      } catch (err) {
+        console.error("Discount creation failed:", err.response?.data || err);
+
+        // Rollback status if discount fails
+        await database.updateOffer(created.id, { status: "draft" });
+
+        return res.status(500).json({
+          error: "Offer created but Shopify discount creation failed."
+        });
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -158,6 +186,9 @@ router.put("/:id", verifyRequest, async (req, res) => {
 /**
  * PATCH /api/offers/:id/status
  */
+/**
+ * PATCH /api/offers/:id/status
+ */
 router.patch("/:id/status", verifyRequest, async (req, res) => {
   try {
     const { id } = req.params;
@@ -168,14 +199,14 @@ router.patch("/:id/status", verifyRequest, async (req, res) => {
       return res.status(400).json({ error: "Invalid status" });
     }
 
-    // 🚨 If activating, check duplicates
+    const offer = await database.getOfferById(id, shopId);
+
+    if (!offer) {
+      return res.status(404).json({ error: "Offer not found" });
+    }
+
+    // 🚨 Duplicate protection on activation
     if (status === "active") {
-      const offer = await database.getOfferById(id, shopId);
-
-      if (!offer) {
-        return res.status(404).json({ error: "Offer not found" });
-      }
-
       const productIds = offer.products || [];
 
       for (const productId of productIds) {
@@ -198,12 +229,55 @@ router.patch("/:id/status", verifyRequest, async (req, res) => {
       }
     }
 
-    const updated = await database.updateOffer(id, { status });
+    // 1️⃣ Activate Offer
+    if (status === "active") {
 
-    res.json({ success: true, data: updated });
+      // If discount not yet created → create it
+      if (!offer.shopify_discount_id) {
+        const disc = await createDiscount(
+            { shop: req.shop, accessToken: req.accessToken },
+            offer
+        );
+
+        await database.updateOffer(id, {
+          shopify_discount_id: disc.priceRuleId,
+          shopify_discount_code: disc.discountCode,
+          status: "active"
+        });
+
+      } else {
+        // Discount exists → just mark active
+        await database.updateOffer(id, { status: "active" });
+      }
+    }
+
+    // 2️⃣ Pause Offer
+    else if (status === "paused") {
+
+      if (offer.shopify_discount_id) {
+        await disableDiscount(
+            { shop: req.shop, accessToken: req.accessToken },
+            offer.shopify_discount_id
+        );
+      }
+
+      await database.updateOffer(id, { status: "paused" });
+    }
+
+    // 3️⃣ Draft
+    else {
+      await database.updateOffer(id, { status: "draft" });
+    }
+
+    const updated = await database.getOfferById(id, shopId);
+
+    res.json({
+      success: true,
+      data: updated
+    });
 
   } catch (err) {
-    console.error("Status update error:", err);
+    console.error("Status update error:", err.response?.data || err);
     res.status(500).json({ error: "Failed to update status" });
   }
 });
