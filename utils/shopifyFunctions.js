@@ -98,15 +98,22 @@ export async function createDiscount(auth, offer) {
       },
       customerGets: {
         items: {
-          products: entitledProductGids
+          products: {
+            productsToAdd: entitledProductGids
+          }
         },
         value: discountType === "percentage"
             ? { percentage: discountValue / 100 }
-            : { discountAmount: { amount: discountValue, appliesOnEachItem: false } }
+            : {
+              discountAmount: {
+                amount: discountValue.toString(),
+                appliesOnEachItem: false
+              }
+            }
       },
       minimumRequirement: {
         quantity: {
-          greaterThanOrEqualToQuantity: minQty
+          greaterThanOrEqualToQuantity: String(minQty)
         }
       }
     }
