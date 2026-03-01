@@ -44,10 +44,22 @@ export async function createDiscount(auth, offer) {
     throw new Error("Missing shop or access token");
   }
 
+
   const discountType = offer.discount_type || offer.discountType;
-  const discountValue = offer.discount_value || offer.discountValue;
+  const discountValue = Number(
+      offer.discount_value ??
+      offer.discountValue ??
+      offer.tiers?.[0]?.discount
+  );
+
+  if (!discountValue || discountValue <= 0) {
+    throw new Error("Discount value missing");
+  }
   const bundleConfig = offer.bundle_config || offer.bundleConfig;
   const tiers = offer.tiers || [];
+
+  console.log("Discount value:", discountValue);
+  console.log("Discount type:", discountType);
 
   const minQty =
       offer.type === "bundle"
