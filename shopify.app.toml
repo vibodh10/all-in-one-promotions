@@ -38,3 +38,8 @@ redirect_urls = [
 
 [pos]
 embedded = false
+
+[app_proxy]
+url = "https://all-in-one-promotions.onrender.com"
+subpath = "promotions"
+prefix = "apps"

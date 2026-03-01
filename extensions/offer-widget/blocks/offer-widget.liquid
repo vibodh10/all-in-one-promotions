@@ -1,7 +1,7 @@
-{% if product %}
+{% if template.name == 'product' and product %}
   <div
     id="smart-offer-root"
-    data-product-id="{{ product.id }}"
+    data-product-id="gid://shopify/Product/{{ product.id }}"
     data-shop="{{ shop.permanent_domain }}">
   </div>
 
@@ -28,3 +28,22 @@
     })();
   </script>
 {% endif %}
+
+{% schema %}
+{
+  "name": "Offer Widget",
+  "target": "section",
+  "settings": [
+    {
+      "type": "select",
+      "id": "position",
+      "label": "Widget position",
+      "options": [
+        { "value": "above_atc", "label": "Above Add to Cart" },
+        { "value": "below_atc", "label": "Below Add to Cart" }
+      ],
+      "default": "below_atc"
+    }
+  ]
+}
+{% endschema %}

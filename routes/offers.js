@@ -14,26 +14,36 @@ import {
 import pool from "../utils/db.js";
 
 // Storefront offers (App Proxy)
+// router.get("/offers", async (req, res) => {
+//   try {
+//     let { productId, shop } = req.query;
+//
+//     if (!productId || !shop) {
+//       return res.status(400).json({ error: "Missing productId or shop" });
+//     }
+//
+//     if (!productId.startsWith("gid://")) {
+//       productId = `gid://shopify/Product/${productId}`;
+//     }
+//
+//     const offers = await database.getOffersByProduct(productId, shop);
+//
+//     res.json({ offers });
+//
+//   } catch (err) {
+//     console.error("Storefront offers error:", err);
+//     res.status(500).json({ error: "Failed to fetch offers" });
+//   }
+// });
+
 router.get("/offers", async (req, res) => {
-  try {
-    let { productId, shop } = req.query;
+  console.log("STORE PROXY HIT");
+  console.log("QUERY:", req.query);
 
-    if (!productId || !shop) {
-      return res.status(400).json({ error: "Missing productId or shop" });
-    }
-
-    if (!productId.startsWith("gid://")) {
-      productId = `gid://shopify/Product/${productId}`;
-    }
-
-    const offers = await database.getOffersByProduct(productId, shop);
-
-    res.json({ offers });
-
-  } catch (err) {
-    console.error("Storefront offers error:", err);
-    res.status(500).json({ error: "Failed to fetch offers" });
-  }
+  res.json({
+    success: true,
+    received: req.query
+  });
 });
 
 /**
