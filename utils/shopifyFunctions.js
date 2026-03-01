@@ -42,25 +42,44 @@ export async function createDiscount(auth, offer) {
   const { shop, accessToken } = auth || {};
   if (!shop || !accessToken) throw new Error("Missing shop or access token");
 
-  // Convert offer.products from objects -> numeric ids
+  console.log("Creating discount for:", offer.id);
+
+  // Normalize fields (snake_case support)
+  const discountType = offer.discount_type || offer.discountType;
+  const discountValue = offer.discount_value || offer.discountValue;
+  const bundleConfig = offer.bundle_config || offer.bundleConfig;
+  const tiers = offer.tiers || [];
+
   const entitledIds =
       Array.isArray(offer.products)
           ? offer.products
-              .map(p => (typeof p === "object" ? gidToNumericId(p.id) : gidToNumericId(p)))
+              .map(p =>
+                  typeof p === "object"
+                      ? gidToNumericId(p.id)
+                      : gidToNumericId(p)
+              )
               .filter(Boolean)
           : [];
 
-  // Basic price rule + discount code (legacy, but works)
   const discountCode =
-      offer.type === "bundle" ? `BUNDLE_${offer.id}` :
-          offer.type === "cross_sell" ? `CROSSSELL_${offer.id}` :
-              `SMARTOFFER_${offer.id}`;
+      offer.type === "bundle"
+          ? `BUNDLE_${offer.id}`
+          : offer.type === "cross_sell"
+              ? `CROSSSELL_${offer.id}`
+              : `SMARTOFFER_${offer.id}`;
 
-  const valueType = offer.discountType === "percentage" ? "percentage" : "fixed_amount";
-  const value = `-${Number(offer.discountValue || 0)}`;
+  const valueType =
+      discountType === "percentage" ? "percentage" : "fixed_amount";
+
+  const value = `-${Number(discountValue || 0)}`;
 
   const startsAt = offer.schedule?.startDate || new Date().toISOString();
   const endsAt = offer.schedule?.endDate || null;
+
+  const minQty =
+      offer.type === "bundle"
+          ? bundleConfig?.minItems || 2
+          : tiers?.[0]?.quantity || 1;
 
   const priceRulePayload = {
     price_rule: {
@@ -74,17 +93,10 @@ export async function createDiscount(auth, offer) {
       entitled_product_ids: entitledIds,
       starts_at: startsAt,
       ends_at: endsAt,
-    },
-  };
-
-  // Quantity prereq if exists
-  const minQty =
-      offer.type === "bundle"
-          ? (offer.bundleConfig?.minItems || 2)
-          : (offer.tiers?.[0]?.quantity || 1);
-
-  priceRulePayload.price_rule.prerequisite_quantity_range = {
-    greater_than_or_equal_to: minQty,
+      prerequisite_quantity_range: {
+        greater_than_or_equal_to: minQty
+      }
+    }
   };
 
   const priceRuleRes = await shopifyRest({
@@ -103,7 +115,9 @@ export async function createDiscount(auth, offer) {
     accessToken,
     method: "POST",
     path: `price_rules/${priceRuleId}/discount_codes`,
-    data: { discount_code: { code: discountCode } },
+    data: {
+      discount_code: { code: discountCode }
+    },
   });
 
   return { priceRuleId, discountCode };
