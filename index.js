@@ -105,8 +105,11 @@ app.get("/", async (req, res) => {
         const hasToken = result.rows.length > 0;
 
         if (!hasToken) {
-            console.log("No token found → redirecting to /auth");
-            return res.redirect(`/auth?shop=${encodeURIComponent(shop)}`);
+            return res.status(200).send(`
+                <script>
+                  window.top.location.href = "/auth?shop=${shop}";
+                </script>
+            `);
         }
 
         console.log("Token found → loading frontend");
