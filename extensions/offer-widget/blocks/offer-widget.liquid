@@ -26,102 +26,60 @@
   </style>
 
   <script>
-    (function () {
-      const root = document.getElementById("smart-offer-root-{{ section.id }}");
-      if (!root) return;
+  (function () {
 
-      const variantId = root.dataset.variantId;
-      const productGid = root.dataset.productGid;
-      const shop = root.dataset.shop;
+    const root = document.getElementById("smart-offer-root-{{ section.id }}");
+    if (!root) return;
 
-      const qs = (sel) => root.querySelector(sel);
+    const variantId = root.dataset.variantId;
+    const productGid = root.dataset.productGid;
+    const shop = root.dataset.shop;
 
-      function fmtSave(offer, tier) {
-        const t = (offer.discountType || "").toLowerCase();
-        // Support either "percentage" / "percentage_off" etc OR "fixed_amount"
-        if (t.includes("percent")) return `Save ${Number(tier.discount)}%`;
-        // Fixed amount (you can enhance later with currency)
-        return `Save ${Number(tier.discount)}`;
-      }
+    fetch(`/apps/promotions/storefront/offers?productId=${encodeURIComponent(productGid)}&shop=${encodeURIComponent(shop)}`)
+      .then(res => res.json())
+      .then(data => {
 
-      function render(offer) {
-        const tiers = Array.isArray(offer.tiers) ? offer.tiers : [];
-
-        if (!tiers.length) {
-          root.innerHTML = `<div class="smart-offer__error">No tiers found for this offer.</div>`;
+        if (!data || !data.offers || !data.offers.length) {
+          root.innerHTML = "";
           return;
         }
 
-        // Build list items (radio)
-        const tierLis = tiers.map((t, idx) => {
-          const qty = Number(t.quantity);
-          const saveText = fmtSave(offer, t);
+        const offer = data.offers[0];
+        const tiers = Array.isArray(offer.tiers) ? offer.tiers : [];
+
+        if (!tiers.length) {
+          root.innerHTML = "";
+          return;
+        }
+
+        const isPercentage =
+          (offer.discountType || "").toLowerCase().includes("percent");
+
+        const tierHTML = tiers.map((tier, index) => {
+          const quantity = Number(tier.quantity);
+          const discount = Number(tier.discount);
 
           return `
             <li class="smart-offer__tier">
               <label>
-                <span class="smart-offer__left">
-                  <input type="radio" name="smart-tier" value="${qty}" ${idx === 0 ? "checked" : ""} />
-                  <span class="smart-offer__badge">Buy ${qty}</span>
-                </span>
-                <span class="smart-offer__save">${saveText}</span>
+                <input type="radio" name="smart-tier" value="${quantity}" ${index === 0 ? "checked" : ""}>
+                <span>Buy ${quantity}</span>
+                <strong>${isPercentage ? `Save ${discount}%` : `Save ${discount}`}</strong>
               </label>
             </li>
           `;
         }).join("");
 
         root.innerHTML = `
-          <div class="smart-offer__title">
-            <span aria-hidden="true">🎁</span>
-            <span>${offer.name || "Offer"}</span>
-          </div>
-          ${offer.description ? `<p class="smart-offer__desc">${offer.description}</p>` : ``}
-
-          <ul class="smart-offer__tiers">
-            ${tierLis}
-          </ul>
-
-          <button type="button" class="smart-offer__btn" id="smart-offer-add-{{ section.id }}">
-            Add bundle to cart
-          </button>
-
-          <div class="smart-offer__error" style="display:none"></div>
+          <div class="smart-offer__title">🎁 ${offer.name || "Offer"}</div>
+          <ul class="smart-offer__tiers">${tierHTML}</ul>
+          <button id="smart-offer-btn" class="smart-offer__btn">Add bundle to cart</button>
         `;
 
-        const btn = qs("#smart-offer-add-{{ section.id }}");
-        const errBox = qs(".smart-offer__error");
-
-        async function addToCart(quantity) {
-          // Add selected quantity of current product variant
-          const res = await fetch("/cart/add.js", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Accept": "application/json" },
-            body: JSON.stringify({
-              items: [{ id: Number(variantId), quantity: Number(quantity) }]
-            })
-          });
-
-          if (!res.ok) {
-            const txt = await res.text();
-            throw new Error(txt || "Failed to add to cart");
-          }
-
-          return res.json();
-        }
-
-        function getDiscountCodeForQty(qty) {
-          // Preferred: per-tier codes (offer.tierCodes = { "2": "CODE2", "3": "CODE3" })
-          if (offer.tierCodes && typeof offer.tierCodes === "object") {
-            const code = offer.tierCodes[String(qty)];
-            if (code) return code;
-          }
-          // Fallback: single code for offer
-          if (offer.shopifyDiscountCode) return offer.shopifyDiscountCode;
-
-          return null;
-        }
+        const btn = document.getElementById("smart-offer-btn");
 
         btn.addEventListener("click", async () => {
+
           const selected = root.querySelector('input[name="smart-tier"]:checked');
           if (!selected) return alert("Select an option");
 
@@ -131,6 +89,7 @@
           btn.textContent = "Adding...";
 
           try {
+
             await fetch("/cart/add.js", {
               method: "POST",
               headers: {
@@ -156,24 +115,13 @@
           }
         });
 
-      // Fetch offer
-      fetch(`/apps/promotions/storefront/offers?productId=${encodeURIComponent(productGid)}&shop=${encodeURIComponent(shop)}`, {
-        headers: { "Accept": "application/json" }
       })
-        .then(res => res.json())
-        .then(data => {
-          const offer = data && data.offers && data.offers[0];
-          if (!offer) {
-            root.innerHTML = ""; // no offer, show nothing
-            return;
-          }
-          render(offer);
-        })
-        .catch(err => {
-          root.innerHTML = `<div class="smart-offer__error">Offer load failed.</div>`;
-          console.error("Offer fetch error:", err);
-        });
-    })();
+      .catch(err => {
+        console.error("Offer fetch error:", err);
+        root.innerHTML = "";
+      });
+
+  })();
   </script>
 {% endif %}
 

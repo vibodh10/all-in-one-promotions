@@ -90,43 +90,18 @@ router.post("/", verifyRequest, async (req, res) => {
       });
     }
 
-    // 🚨 Duplicate active check
-    if (offer.status === "active" && offer.products?.length > 0) {
-      for (const productId of offer.products) {
-        const conflicts = await database.getOffersByProduct(productId, shopId);
-
-        if (conflicts.length > 0) {
-          return res.status(400).json({
-            error: "An active offer already exists for one or more selected products."
-          });
-        }
-      }
-    }
-
-    // 1️⃣ Create offer in DB first
     const created = await database.createOffer(offer.toJSON());
 
-    // 2️⃣ If status is active → create Shopify discount
     if (created.status === "active") {
       try {
-        const disc = await createDiscount(
+        await createDiscount(
             { shop: req.shop, accessToken: req.accessToken },
             created
         );
-
-        await database.updateOffer(created.id, {
-          shopify_discount_id: disc.priceRuleId,
-          shopify_discount_code: disc.discountCode
-        });
-
       } catch (err) {
-        console.error("Discount creation failed:", err.response?.data || err);
-
-        // Rollback status if discount fails
         await database.updateOffer(created.id, { status: "draft" });
-
         return res.status(500).json({
-          error: "Offer created but Shopify discount creation failed."
+          error: "Offer created but discount creation failed."
         });
       }
     }
@@ -231,24 +206,12 @@ router.patch("/:id/status", verifyRequest, async (req, res) => {
 
     // 1️⃣ Activate Offer
     if (status === "active") {
+      await createDiscount(
+          { shop: req.shop, accessToken: req.accessToken },
+          offer
+      );
 
-      // If discount not yet created → create it
-      if (!offer.shopify_discount_id) {
-        const disc = await createDiscount(
-            { shop: req.shop, accessToken: req.accessToken },
-            offer
-        );
-
-        await database.updateOffer(id, {
-          shopify_discount_id: disc.priceRuleId,
-          shopify_discount_code: disc.discountCode,
-          status: "active"
-        });
-
-      } else {
-        // Discount exists → just mark active
-        await database.updateOffer(id, { status: "active" });
-      }
+      await database.updateOffer(id, { status: "active" });
     }
 
     // 2️⃣ Pause Offer
