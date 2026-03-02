@@ -31,6 +31,7 @@ export async function createDiscount({ shop, accessToken }, offer) {
       offer.discount_type === "percentage";
 
   for (const tier of tiers) {
+
     const mutation = `
       mutation discountAutomaticBasicCreate($automaticDiscount: DiscountAutomaticBasicInput!) {
         discountAutomaticBasicCreate(automaticDiscount: $automaticDiscount) {
@@ -44,12 +45,21 @@ export async function createDiscount({ shop, accessToken }, offer) {
       automaticDiscount: {
         title: `${offer.name} - Buy ${tier.quantity}`,
         startsAt: new Date().toISOString(),
+
+        combinesWith: {
+          orderDiscounts: false,
+          productDiscounts: false,
+          shippingDiscounts: false
+        },
+
         customerSelection: { all: true },
+
         minimumRequirement: {
           quantity: {
             greaterThanOrEqualToQuantity: String(tier.quantity)
           }
         },
+
         customerGets: {
           items: {
             products: {
@@ -75,12 +85,16 @@ export async function createDiscount({ shop, accessToken }, offer) {
         variables
     );
 
-    const node =
-        response.data.discountAutomaticBasicCreate.automaticDiscountNode;
+    const errors =
+        response.data.discountAutomaticBasicCreate.userErrors;
 
-    if (node?.id) {
-      createdIds.push(node.id);
+    if (errors.length) {
+      throw new Error(JSON.stringify(errors));
     }
+
+    createdIds.push(
+        response.data.discountAutomaticBasicCreate.automaticDiscountNode.id
+    );
   }
 
   return { automaticDiscountIds: createdIds };
