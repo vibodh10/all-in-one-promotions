@@ -63,7 +63,9 @@ export async function createDiscount({ shop, accessToken }, offer) {
         customerGets: {
           items: {
             products: {
-              productsToAdd: offer.products
+              productsToAdd: offer.products.map(p => ({
+                productId: p
+              }))
             }
           },
           value: isPercentage
@@ -89,6 +91,7 @@ export async function createDiscount({ shop, accessToken }, offer) {
         response.data.discountAutomaticBasicCreate.userErrors;
 
     if (errors.length) {
+      console.error(errors);
       throw new Error(JSON.stringify(errors));
     }
 
