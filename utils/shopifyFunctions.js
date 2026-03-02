@@ -38,7 +38,7 @@ async function shopifyRest({ shop, accessToken, method, path, data }) {
   return json;
 }
 
-async function createDiscount({ shop, accessToken }, offer) {
+export async function createDiscount({ shop, accessToken }, offer) {
   const tiers = offer.tiers || [];
 
   for (const tier of tiers) {
