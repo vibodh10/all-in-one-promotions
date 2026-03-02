@@ -38,133 +38,59 @@ async function shopifyRest({ shop, accessToken, method, path, data }) {
   return json;
 }
 
-export async function createDiscount(auth, offer) {
-  const { shop, accessToken } = auth;
-  if (!shop || !accessToken) {
-    throw new Error("Missing shop or access token");
-  }
-
-
-  const discountType = offer.discount_type || offer.discountType;
-  const discountValue = Number(
-      offer.discount_value ??
-      offer.discountValue ??
-      offer.tiers?.[0]?.discount
-  );
-
-  if (!discountValue || discountValue <= 0) {
-    throw new Error("Discount value missing");
-  }
-  const bundleConfig = offer.bundle_config || offer.bundleConfig;
+async function createDiscount({ shop, accessToken }, offer) {
   const tiers = offer.tiers || [];
 
-  console.log("Discount value:", discountValue);
-  console.log("Discount type:", discountType);
+  for (const tier of tiers) {
 
-  const minQty =
-      offer.type === "bundle"
-          ? bundleConfig?.minItems || 2
-          : tiers?.[0]?.quantity || 1;
+    const isPercentage =
+        offer.discountType === "percentage" ||
+        offer.discount_type === "percentage";
 
-  const entitledProductGids = (offer.products || []).map(p =>
-      typeof p === "string" ? p : p.id
-  );
+    const mutation = `
+      mutation discountAutomaticBasicCreate($automaticDiscount: DiscountAutomaticBasicInput!) {
+        discountAutomaticBasicCreate(automaticDiscount: $automaticDiscount) {
+          automaticDiscountNode {
+            id
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `;
 
-  const discountCode =
-      offer.type === "bundle"
-          ? `BUNDLE_${offer.id}`
-          : offer.type === "cross_sell"
-              ? `CROSSSELL_${offer.id}`
-              : `SMARTOFFER_${offer.id}`;
-
-  const mutation = `
-    mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
-      discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
-        codeDiscountNode {
-          id
-          codeDiscount {
-            ... on DiscountCodeBasic {
-              codes(first: 1) {
-                nodes {
-                  code
+    const variables = {
+      automaticDiscount: {
+        title: `${offer.name} - Buy ${tier.quantity}`,
+        startsAt: new Date().toISOString(),
+        customerSelection: { all: true },
+        minimumRequirement: {
+          quantity: {
+            greaterThanOrEqualToQuantity: String(tier.quantity)
+          }
+        },
+        customerGets: {
+          items: {
+            products: {
+              productsToAdd: offer.products
+            }
+          },
+          value: isPercentage
+              ? { percentage: tier.discount / 100 }
+              : {
+                discountAmount: {
+                  amount: tier.discount.toString(),
+                  appliesOnEachItem: false
                 }
               }
-            }
-          }
-        }
-        userErrors {
-          field
-          message
         }
       }
-    }
-  `;
+    };
 
-  const variables = {
-    basicCodeDiscount: {
-      title: offer.name,
-      code: discountCode,
-      startsAt: new Date().toISOString(),
-      customerSelection: {
-        all: true
-      },
-      customerGets: {
-        items: {
-          products: {
-            productsToAdd: entitledProductGids
-          }
-        },
-        value: discountType === "percentage"
-            ? { percentage: discountValue / 100 }
-            : {
-              discountAmount: {
-                amount: discountValue.toString(),
-                appliesOnEachItem: false
-              }
-            }
-      },
-      minimumRequirement: {
-        quantity: {
-          greaterThanOrEqualToQuantity: String(minQty)
-        }
-      }
-    }
-  };
-
-  const response = await fetch(
-      `https://${shop}/admin/api/2024-01/graphql.json`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Access-Token": accessToken
-        },
-        body: JSON.stringify({ query: mutation, variables })
-      }
-  );
-
-  const result = await response.json();
-
-  if (result.errors) {
-    console.error("GraphQL errors:", result.errors);
-    throw new Error("GraphQL discount creation failed");
+    await shopifyGraphQL(shop, accessToken, mutation, variables);
   }
-
-  const userErrors =
-      result.data.discountCodeBasicCreate.userErrors;
-
-  if (userErrors.length > 0) {
-    console.error("Discount user errors:", userErrors);
-    throw new Error(userErrors[0].message);
-  }
-
-  const node =
-      result.data.discountCodeBasicCreate.codeDiscountNode;
-
-  return {
-    priceRuleId: node.id,
-    discountCode
-  };
 }
 
 export async function deleteDiscount(auth, offer) {

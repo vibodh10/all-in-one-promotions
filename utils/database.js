@@ -47,44 +47,35 @@ async function getOfferById(id, shopId) {
 
 /** Create a new offer */
 async function createOffer(offerData) {
-    if (USE_FIREBASE) {
-        const docRef = await pool.collection('offers').add({
-            ...offerData,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-        return { id: docRef.id, ...offerData };
-    } else {
-        const result = await pool.query(
-            `INSERT INTO offers
-             (shop_id, type, name, description, status, products, collections,
-              discount_type, discount_value, tiers, bundle_config, free_gift,
-              display_settings, styling, schedule, targeting, analytics, created_at, updated_at)
-             VALUES
-                 ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,NOW(),NOW())
-                 RETURNING *`,
-            [
-                offerData.shopId,
-                offerData.type,
-                offerData.name,
-                offerData.description,
-                offerData.status,
-                JSON.stringify(offerData.products),
-                JSON.stringify(offerData.collections),
-                offerData.discountType,
-                offerData.discountValue,
-                JSON.stringify(offerData.tiers),
-                JSON.stringify(offerData.bundleConfig),
-                JSON.stringify(offerData.freeGift),
-                JSON.stringify(offerData.displaySettings),
-                JSON.stringify(offerData.styling),
-                JSON.stringify(offerData.schedule),
-                JSON.stringify(offerData.targeting),
-                JSON.stringify(offerData.analytics)
-            ]
-        );
-        return result.rows[0];
-    }
+    const result = await pool.query(
+        `INSERT INTO offers
+         (shop_id, type, name, description, status, products, collections,
+          discount_type, discount_value, tiers, bundle_config, free_gift,
+          display_settings, styling, schedule, targeting, analytics, created_at, updated_at)
+         VALUES
+             ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,NOW(),NOW())
+             RETURNING *`,
+        [
+            offerData.shopId,
+            offerData.type,
+            offerData.name,
+            offerData.description,
+            offerData.status,
+            JSON.stringify(offerData.products),
+            JSON.stringify(offerData.collections),
+            offerData.discountType,
+            offerData.discountValue,
+            JSON.stringify(offerData.tiers),
+            JSON.stringify(offerData.bundleConfig),
+            JSON.stringify(offerData.freeGift),
+            JSON.stringify(offerData.displaySettings),
+            JSON.stringify(offerData.styling),
+            JSON.stringify(offerData.schedule),
+            JSON.stringify(offerData.targeting),
+            JSON.stringify(offerData.analytics)
+        ]
+    );
+    return result.rows[0];
 }
 
 /** Update an offer */

@@ -1,108 +1,180 @@
 {% if template.name == 'product' and product %}
+  {% assign variant_id = product.selected_or_first_available_variant.id %}
 
-<div
-  id="aio-offer-root"
-  class="aio-offer-container"
-  data-product-id="gid://shopify/Product/{{ product.id }}"
-  data-shop="{{ shop.permanent_domain }}">
-</div>
+  <div
+    id="smart-offer-root-{{ section.id }}"
+    class="smart-offer"
+    data-variant-id="{{ variant_id }}"
+    data-product-gid="gid://shopify/Product/{{ product.id }}"
+    data-shop="{{ shop.permanent_domain }}">
+    <div class="smart-offer__loading">Loading offer…</div>
+  </div>
 
-<style>
-.aio-offer-container {
-  margin-top: 16px;
-}
+  <style>
+    .smart-offer{border:1px solid rgba(0,0,0,.12);border-radius:14px;padding:18px;margin-top:14px;background:#fff}
+    .smart-offer__title{display:flex;align-items:center;gap:10px;font-size:22px;font-weight:700;margin:0 0 8px}
+    .smart-offer__desc{margin:0 0 14px;opacity:.8}
+    .smart-offer__tiers{display:flex;flex-direction:column;gap:10px;margin:0 0 16px;padding:0;list-style:none}
+    .smart-offer__tier{border:1px solid rgba(0,0,0,.12);border-radius:12px;padding:12px 12px}
+    .smart-offer__tier label{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer}
+    .smart-offer__left{display:flex;align-items:center;gap:10px}
+    .smart-offer__badge{font-weight:700}
+    .smart-offer__save{font-weight:800}
+    .smart-offer__btn{width:100%;border-radius:12px;padding:14px 16px;font-weight:800;border:0;cursor:pointer}
+    .smart-offer__btn[disabled]{opacity:.5;cursor:not-allowed}
+    .smart-offer__error{margin-top:10px;color:#b00020;font-size:14px}
+  </style>
 
-.aio-offer-card {
-  border: 1px solid #e5e5e5;
-  border-radius: 10px;
-  padding: 20px;
-  background: #fff;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.05);
-}
+  <script>
+    (function () {
+      const root = document.getElementById("smart-offer-root-{{ section.id }}");
+      if (!root) return;
 
-.aio-offer-header {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
+      const variantId = root.dataset.variantId;
+      const productGid = root.dataset.productGid;
+      const shop = root.dataset.shop;
 
-.aio-offer-description {
-  font-size: 14px;
-  margin-bottom: 10px;
-  color: #555;
-}
+      const qs = (sel) => root.querySelector(sel);
 
-.aio-offer-discount {
-  font-weight: 600;
-  color: #0a7f5a;
-  margin-bottom: 14px;
-}
-
-.aio-offer-button {
-  background: #000;
-  color: #fff;
-  padding: 12px;
-  border-radius: 6px;
-  text-align: center;
-  cursor: pointer;
-  font-size: 14px;
-}
-</style>
-
-<script>
-(function() {
-
-  const container = document.getElementById("aio-offer-root");
-  if (!container) return;
-
-  const productId = container.dataset.productId;
-  const shop = container.dataset.shop;
-
-  fetch(`/apps/promotions/storefront/offers?productId=${productId}&shop=${shop}`)
-    .then(res => res.json())
-    .then(data => {
-
-      if (!data.offers || data.offers.length === 0) {
-        container.style.display = "none";
-        return;
+      function fmtSave(offer, tier) {
+        const t = (offer.discountType || "").toLowerCase();
+        // Support either "percentage" / "percentage_off" etc OR "fixed_amount"
+        if (t.includes("percent")) return `Save ${Number(tier.discount)}%`;
+        // Fixed amount (you can enhance later with currency)
+        return `Save ${Number(tier.discount)}`;
       }
 
-      const offer = data.offers[0];
+      function render(offer) {
+        const tiers = Array.isArray(offer.tiers) ? offer.tiers : [];
 
-      const discountValue = offer.discount_value || 0;
-      const minItems = offer.bundle_config?.minItems || 1;
-      const description = offer.description || "";
+        if (!tiers.length) {
+          root.innerHTML = `<div class="smart-offer__error">No tiers found for this offer.</div>`;
+          return;
+        }
 
-      container.innerHTML = `
-        <div class="aio-offer-card">
+        // Build list items (radio)
+        const tierLis = tiers.map((t, idx) => {
+          const qty = Number(t.quantity);
+          const saveText = fmtSave(offer, t);
 
-          <div class="aio-offer-header">
-            🎁 ${offer.name}
+          return `
+            <li class="smart-offer__tier">
+              <label>
+                <span class="smart-offer__left">
+                  <input type="radio" name="smart-tier" value="${qty}" ${idx === 0 ? "checked" : ""} />
+                  <span class="smart-offer__badge">Buy ${qty}</span>
+                </span>
+                <span class="smart-offer__save">${saveText}</span>
+              </label>
+            </li>
+          `;
+        }).join("");
+
+        root.innerHTML = `
+          <div class="smart-offer__title">
+            <span aria-hidden="true">🎁</span>
+            <span>${offer.name || "Offer"}</span>
           </div>
+          ${offer.description ? `<p class="smart-offer__desc">${offer.description}</p>` : ``}
 
-          ${description ? `
-            <div class="aio-offer-description">
-              ${description}
-            </div>
-          ` : ''}
+          <ul class="smart-offer__tiers">
+            ${tierLis}
+          </ul>
 
-          <div class="aio-offer-discount">
-            Save ${discountValue}% when you buy ${minItems}+
-          </div>
+          <button type="button" class="smart-offer__btn" id="smart-offer-add-{{ section.id }}">
+            Add bundle to cart
+          </button>
 
-          <div class="aio-offer-button">
-            Add Bundle to Cart
-          </div>
+          <div class="smart-offer__error" style="display:none"></div>
+        `;
 
-        </div>
-      `;
+        const btn = qs("#smart-offer-add-{{ section.id }}");
+        const errBox = qs(".smart-offer__error");
 
-    })
-    .catch(err => console.error("Offer fetch error:", err));
+        async function addToCart(quantity) {
+          // Add selected quantity of current product variant
+          const res = await fetch("/cart/add.js", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Accept": "application/json" },
+            body: JSON.stringify({
+              items: [{ id: Number(variantId), quantity: Number(quantity) }]
+            })
+          });
 
-})();
-</script>
+          if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(txt || "Failed to add to cart");
+          }
 
+          return res.json();
+        }
+
+        function getDiscountCodeForQty(qty) {
+          // Preferred: per-tier codes (offer.tierCodes = { "2": "CODE2", "3": "CODE3" })
+          if (offer.tierCodes && typeof offer.tierCodes === "object") {
+            const code = offer.tierCodes[String(qty)];
+            if (code) return code;
+          }
+          // Fallback: single code for offer
+          if (offer.shopifyDiscountCode) return offer.shopifyDiscountCode;
+
+          return null;
+        }
+
+        btn.addEventListener("click", async () => {
+          const selected = root.querySelector('input[name="smart-tier"]:checked');
+          if (!selected) return alert("Select an option");
+
+          const quantity = Number(selected.value);
+
+          btn.disabled = true;
+          btn.textContent = "Adding...";
+
+          try {
+            await fetch("/cart/add.js", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+              },
+              body: JSON.stringify({
+                items: [
+                  {
+                    id: Number(variantId),
+                    quantity: quantity
+                  }
+                ]
+              })
+            });
+
+            window.location.href = "/cart";
+
+          } catch (err) {
+            alert("Failed to add to cart");
+            btn.disabled = false;
+            btn.textContent = "Add bundle to cart";
+          }
+        });
+
+      // Fetch offer
+      fetch(`/apps/promotions/storefront/offers?productId=${encodeURIComponent(productGid)}&shop=${encodeURIComponent(shop)}`, {
+        headers: { "Accept": "application/json" }
+      })
+        .then(res => res.json())
+        .then(data => {
+          const offer = data && data.offers && data.offers[0];
+          if (!offer) {
+            root.innerHTML = ""; // no offer, show nothing
+            return;
+          }
+          render(offer);
+        })
+        .catch(err => {
+          root.innerHTML = `<div class="smart-offer__error">Offer load failed.</div>`;
+          console.error("Offer fetch error:", err);
+        });
+    })();
+  </script>
 {% endif %}
 
 {% schema %}
