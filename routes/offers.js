@@ -146,8 +146,18 @@ router.put("/:id", verifyRequest, async (req, res) => {
     /* ---------- ACTIVE ---------- */
     if (saved.status === "active") {
 
-      if (!saved.shopify_discount_ids || saved.shopify_discount_ids.length === 0) {
-        // Create if missing
+      const hasDiscount =
+          Array.isArray(saved.shopify_discount_ids) &&
+          saved.shopify_discount_ids.length > 0;
+
+      if (hasDiscount) {
+        // ✅ UPDATE existing automatic discount
+        await updateDiscount(
+            { shop: req.shop, accessToken: req.accessToken },
+            saved
+        );
+      } else {
+        // ✅ CREATE only if truly none exists
         const result = await createDiscount(
             { shop: req.shop, accessToken: req.accessToken },
             saved
@@ -156,13 +166,6 @@ router.put("/:id", verifyRequest, async (req, res) => {
         await database.updateOffer(id, {
           shopify_discount_ids: result.automaticDiscountIds,
         });
-
-      } else {
-        // Update existing automatic discount
-        await updateDiscount(
-            { shop: req.shop, accessToken: req.accessToken },
-            saved
-        );
       }
     }
 
