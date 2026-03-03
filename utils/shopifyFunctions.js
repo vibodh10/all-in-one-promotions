@@ -1,5 +1,9 @@
 const API_VERSION = process.env.API_VERSION || "2024-01";
 
+/* ================================
+   GraphQL Helper
+================================ */
+
 async function shopifyGraphQL(shop, accessToken, query, variables) {
   const res = await fetch(
       `https://${shop}/admin/api/${API_VERSION}/graphql.json`,
@@ -16,11 +20,17 @@ async function shopifyGraphQL(shop, accessToken, query, variables) {
   const json = await res.json();
 
   if (!res.ok || json.errors) {
+    console.error("Shopify GraphQL Error:", json);
     throw new Error(JSON.stringify(json));
   }
 
   return json;
 }
+
+/* ================================
+   CREATE AUTOMATIC DISCOUNTS
+   (one per tier)
+================================ */
 
 export async function createDiscount({ shop, accessToken }, offer) {
   const tiers = offer.tiers || [];
@@ -28,11 +38,10 @@ export async function createDiscount({ shop, accessToken }, offer) {
 
   const type = (offer.discountType || offer.discount_type || "").toLowerCase();
 
-  const isPercentage = type.includes("percent");
-  const isFixed = type.includes("fixed");
+  const isPercentage = type === "percentage";
+  const isFixed = type === "fixed_amount";
 
   for (const tier of tiers) {
-
     const mutation = `
       mutation discountAutomaticBasicCreate($automaticBasicDiscount: DiscountAutomaticBasicInput!) {
         discountAutomaticBasicCreate(automaticBasicDiscount: $automaticBasicDiscount) {
@@ -62,7 +71,7 @@ export async function createDiscount({ shop, accessToken }, offer) {
         customerGets: {
           items: {
             products: {
-              productsToAdd: offer.products.map(p =>
+              productsToAdd: (offer.products || []).map(p =>
                   typeof p === "string" ? p : p.id
               )
             }
@@ -86,29 +95,71 @@ export async function createDiscount({ shop, accessToken }, offer) {
         variables
     );
 
-    const errors =
-        response.data.discountAutomaticBasicCreate.userErrors;
+    const payload = response.data.discountAutomaticBasicCreate;
 
-    if (errors.length) {
-      throw new Error(JSON.stringify(errors));
+    if (payload.userErrors.length) {
+      throw new Error(JSON.stringify(payload.userErrors));
     }
 
-    createdIds.push(
-        response.data.discountAutomaticBasicCreate.automaticDiscountNode.id
-    );
+    createdIds.push(payload.automaticDiscountNode.id);
   }
 
   return { automaticDiscountIds: createdIds };
 }
 
-export async function deleteDiscount() {
-  // Not needed for automatic discounts
+/* ================================
+   DELETE AUTOMATIC DISCOUNTS
+================================ */
+
+export async function deleteDiscount({ shop, accessToken }, discountIds = []) {
+  if (!Array.isArray(discountIds)) return;
+
+  const mutation = `
+    mutation discountAutomaticDelete($id: ID!) {
+      discountAutomaticDelete(id: $id) {
+        deletedAutomaticDiscountId
+        userErrors { field message }
+      }
+    }
+  `;
+
+  for (const id of discountIds) {
+    if (!id) continue;
+
+    const response = await shopifyGraphQL(
+        shop,
+        accessToken,
+        mutation,
+        { id }
+    );
+
+    const payload = response.data.discountAutomaticDelete;
+
+    if (payload.userErrors.length) {
+      console.error("Delete error:", payload.userErrors);
+      throw new Error(JSON.stringify(payload.userErrors));
+    }
+  }
 }
 
-export async function disableDiscount() {
-  // Not needed for automatic discounts
+/* ================================
+   DISABLE = DELETE (for automatic)
+================================ */
+
+export async function disableDiscount(auth, discountIds = []) {
+  return await deleteDiscount(auth, discountIds);
 }
+
+/* ================================
+   UPDATE = DELETE + RECREATE
+================================ */
 
 export async function updateDiscount(auth, offer) {
+  // delete previous automatic discounts
+  if (offer.shopify_discount_ids?.length) {
+    await deleteDiscount(auth, offer.shopify_discount_ids);
+  }
+
+  // recreate new ones
   return await createDiscount(auth, offer);
 }
