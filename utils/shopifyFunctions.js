@@ -33,8 +33,8 @@ export async function createDiscount({ shop, accessToken }, offer) {
   for (const tier of tiers) {
 
     const mutation = `
-      mutation discountAutomaticBasicCreate($automaticDiscount: DiscountAutomaticBasicInput!) {
-        discountAutomaticBasicCreate(automaticDiscount: $automaticDiscount) {
+      mutation discountAutomaticBasicCreate($automaticBasicDiscount: DiscountAutomaticBasicInput!) {
+        discountAutomaticBasicCreate(automaticBasicDiscount: $automaticBasicDiscount) {
           automaticDiscountNode { id }
           userErrors { field message }
         }
@@ -42,7 +42,7 @@ export async function createDiscount({ shop, accessToken }, offer) {
     `;
 
     const variables = {
-      automaticDiscount: {
+      automaticBasicDiscount: {
         title: `${offer.name} - Buy ${tier.quantity}`,
         startsAt: new Date().toISOString(),
 
@@ -69,8 +69,8 @@ export async function createDiscount({ shop, accessToken }, offer) {
             }
           },
           value: isPercentage
-              ? { percentage: tier.discount / 100 }
-              : {
+            ? { percentage: tier.discount / 100 }
+            : {
                 discountAmount: {
                   amount: tier.discount.toString(),
                   appliesOnEachItem: false
@@ -81,22 +81,21 @@ export async function createDiscount({ shop, accessToken }, offer) {
     };
 
     const response = await shopifyGraphQL(
-        shop,
-        accessToken,
-        mutation,
-        variables
+      shop,
+      accessToken,
+      mutation,
+      variables
     );
 
     const errors =
-        response.data.discountAutomaticBasicCreate.userErrors;
+      response.data.discountAutomaticBasicCreate.userErrors;
 
     if (errors.length) {
-      console.error(errors);
       throw new Error(JSON.stringify(errors));
     }
 
     createdIds.push(
-        response.data.discountAutomaticBasicCreate.automaticDiscountNode.id
+      response.data.discountAutomaticBasicCreate.automaticDiscountNode.id
     );
   }
 
