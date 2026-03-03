@@ -141,43 +141,53 @@ router.put("/:id", verifyRequest, async (req, res) => {
       });
     }
 
+    // 1️⃣ Save updated offer fields first
     const saved = await database.updateOffer(id, updatedOffer.toJSON());
 
     /* ---------- ACTIVE ---------- */
     if (saved.status === "active") {
+
+      let result;
 
       const hasDiscount =
           Array.isArray(saved.shopify_discount_ids) &&
           saved.shopify_discount_ids.length > 0;
 
       if (hasDiscount) {
-        // ✅ UPDATE existing automatic discount
-        await updateDiscount(
+        // 🔁 UPDATE = delete + recreate (your architecture)
+        result = await updateDiscount(
             { shop: req.shop, accessToken: req.accessToken },
             saved
         );
       } else {
-        // ✅ CREATE only if truly none exists
-        const result = await createDiscount(
+        // 🆕 CREATE fresh
+        result = await createDiscount(
             { shop: req.shop, accessToken: req.accessToken },
             saved
         );
-
-        await database.updateOffer(id, {
-          shopify_discount_ids: result.automaticDiscountIds,
-        });
       }
+
+      // ✅ ALWAYS overwrite DB with fresh IDs
+      await database.updateOffer(id, {
+        shopify_discount_ids: result.automaticDiscountIds,
+      });
     }
 
     /* ---------- NOT ACTIVE ---------- */
     if (
         saved.status !== "active" &&
-        saved.shopify_discount_ids?.length
+        Array.isArray(saved.shopify_discount_ids) &&
+        saved.shopify_discount_ids.length > 0
     ) {
       await disableDiscount(
           { shop: req.shop, accessToken: req.accessToken },
           saved.shopify_discount_ids
       );
+
+      // 🔥 Clear IDs in DB to prevent stale delete later
+      await database.updateOffer(id, {
+        shopify_discount_ids: [],
+      });
     }
 
     const refreshed = await database.getOfferById(id, shopId);

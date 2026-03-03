@@ -127,18 +127,37 @@ export async function deleteDiscount({ shop, accessToken }, discountIds = []) {
   for (const id of discountIds) {
     if (!id) continue;
 
-    const response = await shopifyGraphQL(
-        shop,
-        accessToken,
-        mutation,
-        { id }
-    );
+    try {
+      const response = await shopifyGraphQL(
+          shop,
+          accessToken,
+          mutation,
+          { id }
+      );
 
-    const payload = response.data.discountAutomaticDelete;
+      const payload = response.data.discountAutomaticDelete;
 
-    if (payload.userErrors.length) {
-      console.error("Delete error:", payload.userErrors);
-      throw new Error(JSON.stringify(payload.userErrors));
+      // If Shopify says it doesn't exist, ignore and continue
+      const errs = payload?.userErrors || [];
+      const missing = errs.some(e => (e.message || "").includes("does not exist"));
+
+      if (errs.length && !missing) {
+        console.error("Delete error:", errs);
+        throw new Error(JSON.stringify(errs));
+      }
+
+      if (missing) {
+        console.warn("Discount already missing, skipping delete:", id);
+      }
+
+    } catch (err) {
+      // Also tolerate GraphQL-level "does not exist" errors
+      const msg = String(err?.message || err);
+      if (msg.includes("does not exist")) {
+        console.warn("Discount already missing (caught), skipping delete:", id);
+        continue;
+      }
+      throw err;
     }
   }
 }
