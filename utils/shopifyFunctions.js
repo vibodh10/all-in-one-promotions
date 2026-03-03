@@ -52,8 +52,6 @@ export async function createDiscount({ shop, accessToken }, offer) {
           shippingDiscounts: false
         },
 
-        customerSelection: { all: true },
-
         minimumRequirement: {
           quantity: {
             greaterThanOrEqualToQuantity: String(tier.quantity)
@@ -64,13 +62,13 @@ export async function createDiscount({ shop, accessToken }, offer) {
           items: {
             products: {
               productsToAdd: offer.products.map(p => ({
-                productId: p
+                id: p   // ✅ MUST BE id, NOT productId
               }))
             }
           },
           value: isPercentage
-            ? { percentage: tier.discount / 100 }
-            : {
+              ? { percentage: tier.discount / 100 }
+              : {
                 discountAmount: {
                   amount: tier.discount.toString(),
                   appliesOnEachItem: false
@@ -81,21 +79,21 @@ export async function createDiscount({ shop, accessToken }, offer) {
     };
 
     const response = await shopifyGraphQL(
-      shop,
-      accessToken,
-      mutation,
-      variables
+        shop,
+        accessToken,
+        mutation,
+        variables
     );
 
     const errors =
-      response.data.discountAutomaticBasicCreate.userErrors;
+        response.data.discountAutomaticBasicCreate.userErrors;
 
     if (errors.length) {
       throw new Error(JSON.stringify(errors));
     }
 
     createdIds.push(
-      response.data.discountAutomaticBasicCreate.automaticDiscountNode.id
+        response.data.discountAutomaticBasicCreate.automaticDiscountNode.id
     );
   }
 
