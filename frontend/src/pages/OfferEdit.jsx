@@ -83,11 +83,16 @@ function OfferEdit() {
             setLoading(true);
             setError(null);
 
-            const response = await api.get(`/offers/${id}`, {
+            const response = await api.get(`/offers/${id}`);
+            const data = response.data.data;
 
+            setOfferData({
+                ...data,
+                discountType: data.discountType || data.discount_type,
+                bundleConfig: data.bundleConfig || data.bundle_config,
+                displaySettings: data.displaySettings || data.display_settings,
             });
 
-            setOfferData(response.data.data);
         } catch (err) {
             console.error('Error fetching offer:', err);
             setError('Failed to load offer. Please try again.');
