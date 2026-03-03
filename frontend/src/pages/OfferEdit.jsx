@@ -86,12 +86,13 @@ function OfferEdit() {
             const response = await api.get(`/offers/${id}`);
             const data = response.data.data;
 
-            setOfferData({
+            console.log("RAW API DATA:", data);
+
+            setOfferData(prev => ({
+                ...prev,
                 ...data,
-                discountType: data.discountType || data.discount_type,
-                bundleConfig: data.bundleConfig || data.bundle_config,
-                displaySettings: data.displaySettings || data.display_settings,
-            });
+                discountType: data.discountType || data.discount_type || 'percentage'
+            }));
 
         } catch (err) {
             console.error('Error fetching offer:', err);
