@@ -62,7 +62,7 @@ export async function createDiscount({ shop, accessToken }, offer) {
           items: {
             products: {
               productsToAdd: offer.products.map(p => ({
-                id: p   // ✅ MUST BE id, NOT productId
+                id: typeof p === "string" ? p : p.id
               }))
             }
           },
