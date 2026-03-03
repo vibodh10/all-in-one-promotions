@@ -97,7 +97,8 @@ async function updateOffer(id, updates) {
         "styling",
         "schedule",
         "targeting",
-        "analytics"
+        "analytics",
+        "shopify_discount_ids" // ✅ ADD THIS
     ];
 
     const fields = Object.keys(cleanedUpdates);
@@ -114,9 +115,9 @@ async function updateOffer(id, updates) {
 
     const result = await pool.query(
         `UPDATE offers
-     SET ${setClause}${fields.length ? "," : ""} updated_at = NOW()
-     WHERE id = $1
-     RETURNING *`,
+         SET ${setClause}${fields.length ? "," : ""} updated_at = NOW()
+         WHERE id = $1
+             RETURNING *`,
         [id, ...values]
     );
 
