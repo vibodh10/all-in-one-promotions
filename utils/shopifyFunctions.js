@@ -196,7 +196,7 @@ export async function updateDiscount(context, offer) {
 
       customerGets: {
         value: {
-          percentage: offer.discountValue / 100
+          percentage: Number(offer.discountValue) / 100
         },
         items: {
           products: {
@@ -207,7 +207,7 @@ export async function updateDiscount(context, offer) {
 
       minimumRequirement: {
         quantity: {
-          greaterThanOrEqualToQuantity: offer.minimumQuantity || 1
+          greaterThanOrEqualToQuantity: String(offer.minimumQuantity || 1)
         }
       }
     }
