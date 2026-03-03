@@ -26,9 +26,10 @@ export async function createDiscount({ shop, accessToken }, offer) {
   const tiers = offer.tiers || [];
   const createdIds = [];
 
-  const isPercentage =
-      offer.discountType === "percentage" ||
-      offer.discount_type === "percentage";
+  const type = (offer.discountType || offer.discount_type || "").toLowerCase();
+
+  const isPercentage = type.includes("percent");
+  const isFixed = type.includes("fixed");
 
   for (const tier of tiers) {
 
