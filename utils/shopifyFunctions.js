@@ -193,16 +193,22 @@ export async function updateDiscount(context, offer) {
         productDiscounts: false,
         shippingDiscounts: false
       },
+
       customerGets: {
         value: {
           percentage: offer.discountValue / 100
         },
         items: {
-          products: offer.products
+          products: {
+            productsToAdd: offer.products || []
+          }
         }
       },
+
       minimumRequirement: {
-        quantity: offer.minimumQuantity
+        quantity: {
+          greaterThanOrEqualToQuantity: offer.minimumQuantity || 1
+        }
       }
     }
   };
@@ -221,11 +227,15 @@ export async function updateDiscount(context, offer) {
 
   const data = await response.json();
 
+  console.log("Shopify update response:", JSON.stringify(data, null, 2));
+
+  if (!data.data) {
+    throw new Error("GraphQL Error: " + JSON.stringify(data.errors));
+  }
+
   if (data.data.discountAutomaticBasicUpdate.userErrors.length > 0) {
     throw new Error(
-        JSON.stringify(
-            data.data.discountAutomaticBasicUpdate.userErrors
-        )
+        JSON.stringify(data.data.discountAutomaticBasicUpdate.userErrors)
     );
   }
 
