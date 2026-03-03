@@ -99,9 +99,15 @@ router.post("/", verifyRequest, async (req, res) => {
             created
         );
       } catch (err) {
+
+        console.error("🔥 DISCOUNT CREATION ERROR:");
+        console.error(err);
+        console.error(err.message);
+
         await database.updateOffer(created.id, { status: "draft" });
+
         return res.status(500).json({
-          error: "Offer created but discount creation failed."
+          error: err.message || "Discount creation failed"
         });
       }
     }
