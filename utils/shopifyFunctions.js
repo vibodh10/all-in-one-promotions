@@ -182,7 +182,13 @@ export async function updateDiscount(context, offer) {
     }
   `;
 
-  const percentageValue = Number(offer.discountValue);
+  const discountValue =
+      offer.discountValue ?? offer.discount_value;
+
+  const minimumQuantity =
+      offer.minimumQuantity ?? offer.minimum_quantity ?? 1;
+
+  const percentageValue = Number(discountValue);
 
   if (isNaN(percentageValue) || percentageValue <= 0) {
     throw new Error("Discount percentage must be greater than 0.");
@@ -214,7 +220,7 @@ export async function updateDiscount(context, offer) {
 
       minimumRequirement: {
         quantity: {
-          greaterThanOrEqualToQuantity: String(offer.minimumQuantity || 1)
+          greaterThanOrEqualToQuantity: String(minimumQuantity)
         }
       }
     }
