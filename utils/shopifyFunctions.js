@@ -61,9 +61,9 @@ export async function createDiscount({ shop, accessToken }, offer) {
         customerGets: {
           items: {
             products: {
-              productsToAdd: offer.products.map(p => ({
-                id: typeof p === "string" ? p : p.id
-              }))
+              productsToAdd: offer.products.map(p =>
+                  typeof p === "string" ? p : p.id
+              )
             }
           },
           value: isPercentage
