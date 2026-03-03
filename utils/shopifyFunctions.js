@@ -182,6 +182,12 @@ export async function updateDiscount(context, offer) {
     }
   `;
 
+  const percentageValue = Number(offer.discountValue);
+
+  if (isNaN(percentageValue) || percentageValue <= 0) {
+    throw new Error("Discount percentage must be greater than 0.");
+  }
+
   const variables = {
     id: discountId,
     automaticBasicDiscount: {
@@ -195,9 +201,10 @@ export async function updateDiscount(context, offer) {
       },
 
       customerGets: {
-        value: {
-          percentage: Number(offer.discountValue) / 100
-        },
+        value:
+            offer.discountType === "percentage"
+                ? { percentage: percentageValue / 100 }
+                : { discountAmount: { amount: offer.discountValue } },
         items: {
           products: {
             productsToAdd: offer.products || []
