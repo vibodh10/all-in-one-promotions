@@ -154,12 +154,22 @@ export async function disableDiscount(auth, discountIds = []) {
    UPDATE = DELETE + RECREATE
 ================================ */
 
-export async function updateDiscount(auth, offer) {
-  // delete previous automatic discounts
-  if (offer.shopify_discount_ids?.length) {
-    await deleteDiscount(auth, offer.shopify_discount_ids);
+export async function updateDiscount(context, offer) {
+  const ids = offer.shopify_discount_ids;
+
+  if (!ids || ids.length === 0) {
+    throw new Error("No discount ID found to update.");
   }
 
-  // recreate new ones
-  return await createDiscount(auth, offer);
+  const discountId = Array.isArray(ids) ? ids[0] : ids;
+
+  try {
+    // First delete existing
+    await deleteDiscount(context, discountId);
+  } catch (err) {
+    console.warn("Discount did not exist, will recreate.");
+  }
+
+  // Then create new one
+  return await createDiscount(context, offer);
 }
