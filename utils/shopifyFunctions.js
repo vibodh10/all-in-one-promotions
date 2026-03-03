@@ -155,21 +155,63 @@ export async function disableDiscount(auth, discountIds = []) {
 ================================ */
 
 export async function updateDiscount(context, offer) {
-  const ids = offer.shopify_discount_ids;
+  const discountIds = offer.shopify_discount_ids;
 
-  if (!ids || ids.length === 0) {
-    throw new Error("No discount ID found to update.");
+  if (!discountIds || discountIds.length === 0) {
+    throw new Error("No automatic discount ID found to update.");
   }
 
-  const discountId = Array.isArray(ids) ? ids[0] : ids;
+  const discountId = Array.isArray(discountIds)
+      ? discountIds[0]
+      : discountIds;
 
-  try {
-    // First delete existing
-    await deleteDiscount(context, discountId);
-  } catch (err) {
-    console.warn("Discount did not exist, will recreate.");
+  const mutation = `
+    mutation discountAutomaticBasicUpdate($id: ID!, $automaticBasicDiscount: DiscountAutomaticBasicInput!) {
+      discountAutomaticBasicUpdate(
+        id: $id,
+        automaticBasicDiscount: $automaticBasicDiscount
+      ) {
+        automaticDiscountNode {
+          id
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  `;
+
+  const variables = {
+    id: discountId,
+    automaticBasicDiscount: {
+      title: offer.name, // or your title logic
+      startsAt: new Date().toISOString(),
+      // add your other fields here
+    }
+  };
+
+  const response = await fetch(
+      `https://${context.shop}/admin/api/2024-01/graphql.json`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Access-Token": context.accessToken,
+        },
+        body: JSON.stringify({ query: mutation, variables }),
+      }
+  );
+
+  const data = await response.json();
+
+  if (data.data.discountAutomaticBasicUpdate.userErrors.length > 0) {
+    throw new Error(
+        JSON.stringify(
+            data.data.discountAutomaticBasicUpdate.userErrors
+        )
+    );
   }
 
-  // Then create new one
-  return await createDiscount(context, offer);
+  return data.data.discountAutomaticBasicUpdate.automaticDiscountNode;
 }
