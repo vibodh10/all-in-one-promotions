@@ -185,9 +185,25 @@ export async function updateDiscount(context, offer) {
   const variables = {
     id: discountId,
     automaticBasicDiscount: {
-      title: offer.name, // or your title logic
-      startsAt: new Date().toISOString(),
-      // add your other fields here
+      title: offer.name,
+      startsAt: offer.schedule?.start || new Date().toISOString(),
+      endsAt: offer.schedule?.end || null,
+      combinesWith: {
+        orderDiscounts: false,
+        productDiscounts: false,
+        shippingDiscounts: false
+      },
+      customerGets: {
+        value: {
+          percentage: offer.discountValue / 100
+        },
+        items: {
+          products: offer.products
+        }
+      },
+      minimumRequirement: {
+        quantity: offer.minimumQuantity
+      }
     }
   };
 
