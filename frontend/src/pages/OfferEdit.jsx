@@ -286,10 +286,6 @@ function OfferEdit() {
                                         onChange={(value) => handleChange('discountType', value)}
                                     />
 
-                                    <Text>
-                                        {JSON.stringify(offerData.discountType)}
-                                    </Text>
-
                                     {offerData.type === 'quantity_break' && (
                                         <BlockStack gap="300">
                                             <Text variant="bodyMd" as="p" fontWeight="semibold">
