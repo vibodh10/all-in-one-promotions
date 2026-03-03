@@ -37,9 +37,12 @@ export async function createDiscount({ shop, accessToken }, offer) {
   const createdIds = [];
 
   const type = (offer.discountType || offer.discount_type || "").toLowerCase();
-
   const isPercentage = type === "percentage";
   const isFixed = type === "fixed_amount";
+
+  const productIds = (offer.products || []).map(p =>
+      typeof p === "string" ? p : p.id
+  );
 
   for (const tier of tiers) {
     const mutation = `
@@ -71,16 +74,14 @@ export async function createDiscount({ shop, accessToken }, offer) {
         customerGets: {
           items: {
             products: {
-              productsToAdd: (offer.products || []).map(p =>
-                  typeof p === "string" ? p : p.id
-              )
+              productsToAdd: productIds
             }
           },
           value: isPercentage
-              ? { percentage: tier.discount / 100 }
+              ? { percentage: Number(tier.discount) / 100 }
               : {
                 discountAmount: {
-                  amount: tier.discount.toString(),
+                  amount: String(tier.discount),
                   appliesOnEachItem: false
                 }
               }
@@ -143,7 +144,7 @@ export async function deleteDiscount({ shop, accessToken }, discountIds = []) {
 }
 
 /* ================================
-   DISABLE = DELETE (for automatic)
+   DISABLE = DELETE
 ================================ */
 
 export async function disableDiscount(auth, discountIds = []) {
@@ -151,106 +152,19 @@ export async function disableDiscount(auth, discountIds = []) {
 }
 
 /* ================================
-   UPDATE = DELETE + RECREATE
+   UPDATE = DELETE + RECREATE (CLEAN)
 ================================ */
 
 export async function updateDiscount(context, offer) {
-  const discountIds = offer.shopify_discount_ids;
+  const discountIds = offer.shopify_discount_ids || [];
 
-  if (!discountIds || discountIds.length === 0) {
-    throw new Error("No automatic discount ID found to update.");
+  // 1️⃣ Delete existing tier discounts
+  if (Array.isArray(discountIds) && discountIds.length > 0) {
+    await deleteDiscount(context, discountIds);
   }
 
-  const discountId = Array.isArray(discountIds)
-      ? discountIds[0]
-      : discountIds;
+  // 2️⃣ Recreate fresh tier discounts
+  const result = await createDiscount(context, offer);
 
-  const mutation = `
-    mutation discountAutomaticBasicUpdate($id: ID!, $automaticBasicDiscount: DiscountAutomaticBasicInput!) {
-      discountAutomaticBasicUpdate(
-        id: $id,
-        automaticBasicDiscount: $automaticBasicDiscount
-      ) {
-        automaticDiscountNode {
-          id
-        }
-        userErrors {
-          field
-          message
-        }
-      }
-    }
-  `;
-
-  const discountValue =
-      offer.discountValue ?? offer.discount_value;
-
-  const minimumQuantity =
-      offer.minimumQuantity ?? offer.minimum_quantity ?? 1;
-
-  const percentageValue = Number(discountValue);
-
-  if (isNaN(percentageValue) || percentageValue <= 0) {
-    throw new Error("Discount percentage must be greater than 0.");
-  }
-
-  const variables = {
-    id: discountId,
-    automaticBasicDiscount: {
-      title: offer.name,
-      startsAt: offer.schedule?.start || new Date().toISOString(),
-      endsAt: offer.schedule?.end || null,
-      combinesWith: {
-        orderDiscounts: false,
-        productDiscounts: false,
-        shippingDiscounts: false
-      },
-
-      customerGets: {
-        value:
-            offer.discountType === "percentage"
-                ? { percentage: percentageValue / 100 }
-                : { discountAmount: { amount: offer.discountValue } },
-        items: {
-          products: {
-            productsToAdd: offer.products || []
-          }
-        }
-      },
-
-      minimumRequirement: {
-        quantity: {
-          greaterThanOrEqualToQuantity: String(minimumQuantity)
-        }
-      }
-    }
-  };
-
-  const response = await fetch(
-      `https://${context.shop}/admin/api/2024-01/graphql.json`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Access-Token": context.accessToken,
-        },
-        body: JSON.stringify({ query: mutation, variables }),
-      }
-  );
-
-  const data = await response.json();
-
-  console.log("Shopify update response:", JSON.stringify(data, null, 2));
-
-  if (!data.data) {
-    throw new Error("GraphQL Error: " + JSON.stringify(data.errors));
-  }
-
-  if (data.data.discountAutomaticBasicUpdate.userErrors.length > 0) {
-    throw new Error(
-        JSON.stringify(data.data.discountAutomaticBasicUpdate.userErrors)
-    );
-  }
-
-  return data.data.discountAutomaticBasicUpdate.automaticDiscountNode;
+  return result;
 }
