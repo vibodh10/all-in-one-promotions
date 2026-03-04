@@ -1,4 +1,4 @@
-const API_VERSION = process.env.API_VERSION || "2024-01";
+const API_VERSION = process.env.API_VERSION || "2026-01";
 
 /* ================================
    GraphQL Helper
@@ -28,91 +28,66 @@ async function shopifyGraphQL(shop, accessToken, query, variables) {
 }
 
 /* ================================
-   CREATE AUTOMATIC DISCOUNTS
-   (one per tier)
+   CREATE FUNCTION DISCOUNT
 ================================ */
 
 export async function createDiscount({ shop, accessToken }, offer) {
-  const tiers = offer.tiers || [];
-  const createdIds = [];
 
-  const type = (offer.discountType || offer.discount_type || "").toLowerCase();
-  const isPercentage = type === "percentage";
-  const isFixed = type === "fixed_amount";
+  const mutation = `
+    mutation discountAutomaticAppCreate($automaticAppDiscount: DiscountAutomaticAppInput!) {
+      discountAutomaticAppCreate(automaticAppDiscount: $automaticAppDiscount) {
+        automaticAppDiscount {
+          discountId
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  `;
 
-  const productIds = (offer.products || []).map(p =>
-      typeof p === "string" ? p : p.id
+  const variables = {
+    automaticAppDiscount: {
+      title: offer.name || "Promotion",
+      functionId: process.env.SHOPIFY_FUNCTION_ID,
+
+      startsAt: new Date().toISOString(),
+
+      combinesWith: {
+        productDiscounts: true,
+        orderDiscounts: true,
+        shippingDiscounts: true
+      }
+    }
+  };
+
+  const response = await shopifyGraphQL(
+      shop,
+      accessToken,
+      mutation,
+      variables
   );
 
-  for (const tier of tiers) {
-    const mutation = `
-      mutation discountAutomaticBasicCreate($automaticBasicDiscount: DiscountAutomaticBasicInput!) {
-        discountAutomaticBasicCreate(automaticBasicDiscount: $automaticBasicDiscount) {
-          automaticDiscountNode { id }
-          userErrors { field message }
-        }
-      }
-    `;
+  const payload = response.data.discountAutomaticAppCreate;
 
-    const variables = {
-      automaticBasicDiscount: {
-        title: `${offer.name} - Buy ${tier.quantity}`,
-        startsAt: new Date().toISOString(),
-
-        combinesWith: {
-          orderDiscounts: false,
-          productDiscounts: false,
-          shippingDiscounts: false
-        },
-
-        minimumRequirement: {
-          quantity: {
-            greaterThanOrEqualToQuantity: String(tier.quantity)
-          }
-        },
-
-        customerGets: {
-          items: {
-            products: {
-              productsToAdd: productIds
-            }
-          },
-          value: isPercentage
-              ? { percentage: Number(tier.discount) / 100 }
-              : {
-                discountAmount: {
-                  amount: String(tier.discount),
-                  appliesOnEachItem: false
-                }
-              }
-        }
-      }
-    };
-
-    const response = await shopifyGraphQL(
-        shop,
-        accessToken,
-        mutation,
-        variables
-    );
-
-    const payload = response.data.discountAutomaticBasicCreate;
-
-    if (payload.userErrors.length) {
-      throw new Error(JSON.stringify(payload.userErrors));
-    }
-
-    createdIds.push(payload.automaticDiscountNode.id);
+  if (payload.userErrors.length) {
+    throw new Error(JSON.stringify(payload.userErrors));
   }
 
-  return { automaticDiscountIds: createdIds };
+  return {
+    automaticDiscountIds: [
+      payload.automaticAppDiscount.discountId
+    ]
+  };
 }
 
 /* ================================
-   DELETE AUTOMATIC DISCOUNTS
+   DELETE AUTOMATIC DISCOUNT
 ================================ */
 
 export async function deleteDiscount({ shop, accessToken }, discountIds = []) {
+
   if (!Array.isArray(discountIds)) return;
 
   const mutation = `
@@ -125,9 +100,11 @@ export async function deleteDiscount({ shop, accessToken }, discountIds = []) {
   `;
 
   for (const id of discountIds) {
+
     if (!id) continue;
 
     try {
+
       const response = await shopifyGraphQL(
           shop,
           accessToken,
@@ -137,9 +114,11 @@ export async function deleteDiscount({ shop, accessToken }, discountIds = []) {
 
       const payload = response.data.discountAutomaticDelete;
 
-      // If Shopify says it doesn't exist, ignore and continue
       const errs = payload?.userErrors || [];
-      const missing = errs.some(e => (e.message || "").includes("does not exist"));
+
+      const missing = errs.some(e =>
+          (e.message || "").includes("does not exist")
+      );
 
       if (errs.length && !missing) {
         console.error("Delete error:", errs);
@@ -147,16 +126,18 @@ export async function deleteDiscount({ shop, accessToken }, discountIds = []) {
       }
 
       if (missing) {
-        console.warn("Discount already missing, skipping delete:", id);
+        console.warn("Discount already missing:", id);
       }
 
     } catch (err) {
-      // Also tolerate GraphQL-level "does not exist" errors
+
       const msg = String(err?.message || err);
+
       if (msg.includes("does not exist")) {
-        console.warn("Discount already missing (caught), skipping delete:", id);
+        console.warn("Discount already missing (caught):", id);
         continue;
       }
+
       throw err;
     }
   }
@@ -171,18 +152,17 @@ export async function disableDiscount(auth, discountIds = []) {
 }
 
 /* ================================
-   UPDATE = DELETE + RECREATE (CLEAN)
+   UPDATE = DELETE + RECREATE
 ================================ */
 
 export async function updateDiscount(context, offer) {
+
   const discountIds = offer.shopify_discount_ids || [];
 
-  // 1️⃣ Delete existing tier discounts
   if (Array.isArray(discountIds) && discountIds.length > 0) {
     await deleteDiscount(context, discountIds);
   }
 
-  // 2️⃣ Recreate fresh tier discounts
   const result = await createDiscount(context, offer);
 
   return result;

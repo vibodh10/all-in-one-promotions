@@ -1,0 +1,18 @@
+api_version = "2026-01"
+
+[[extensions]]
+name = "t:name"
+handle = "promotions-discount"
+type = "function"
+uid = "a2dac066-c565-ddcc-d474-055b3cfd3f4ad3f19ada"
+description = "t:description"
+
+[[extensions.targeting]]
+target = "cart.lines.discounts.generate.run"
+input_query = "src/cart_lines_discounts_generate_run.graphql"
+export = "cart_lines_discounts_generate_run"
+
+[extensions.build]
+command = "cargo build --target=wasm32-unknown-unknown --release"
+path = "target/wasm32-unknown-unknown/release/promotions-discount.wasm"
+watch = ["src/**/*.rs"]
