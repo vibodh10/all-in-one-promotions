@@ -20,6 +20,7 @@ use crate::schema::{
 
 use crate::schema::cart_lines_discounts_generate_run::
 cart_lines_discounts_generate_run_input::cart::lines::Merchandise;
+
 use shopify_function::Result;
 
 #[derive(Deserialize)]
@@ -27,6 +28,7 @@ struct Offer {
     r#type: String,
     products: Vec<String>,
     discountValue: Option<f64>,
+    minQuantity: Option<i32>,
     tiers: Option<Vec<Tier>>,
 }
 
@@ -36,173 +38,61 @@ struct Tier {
     discount: f64,
 }
 
+struct CartItem {
+    line_id: String,
+    product_id: String,
+    quantity: i32,
+}
+
 #[shopify_function]
 fn cart_lines_discounts_generate_run(
     input: CartLinesDiscountsGenerateRunInput,
 ) -> Result<CartLinesDiscountsGenerateRunResult> {
 
-    let mut candidates: Vec<ProductDiscountCandidate> = vec![];
-
-    let offers: Vec<Offer> = match input.shop().metafield() {
+    let offers: Vec<Offer> = match input.discount().metafield() {
         Some(m) => serde_json::from_str(m.value()).unwrap_or_default(),
         None => vec![],
     };
 
+    // --------------------------------
+    // Scan cart once
+    // --------------------------------
+
+    let mut cart_items: Vec<CartItem> = vec![];
+
+    for line in input.cart().lines() {
+
+        if let Merchandise::ProductVariant(variant) = line.merchandise() {
+
+            cart_items.push(CartItem {
+                line_id: line.id().to_string(),
+                product_id: variant.product().id().to_string(),
+                quantity: *line.quantity(),
+            });
+        }
+    }
+
+    let mut candidates: Vec<ProductDiscountCandidate> = vec![];
+
+    // --------------------------------
+    // Process each offer
+    // --------------------------------
+
     for offer in offers {
 
-        // ------------------------
-        // BUNDLE
-        // ------------------------
+        match offer.r#type.as_str() {
 
-        if offer.r#type == "bundle" {
+            "bundle" => apply_bundle(&offer, &cart_items, &mut candidates),
 
-            let mut cart_products: Vec<String> = vec![];
+            "volume_discount" => apply_volume(&offer, &cart_items, &mut candidates),
 
-            for line in input.cart().lines() {
+            "quantity_break" => apply_quantity_break(&offer, &cart_items, &mut candidates),
 
-                if let Merchandise::ProductVariant(variant) = line.merchandise() {
-
-                    cart_products.push(variant.product().id().to_string());
-                }
-            }
-
-            let bundle_match = offer.products.iter().all(|p| cart_products.contains(p));
-
-            if bundle_match {
-
-                for line in input.cart().lines() {
-
-                    if let Merchandise::ProductVariant(variant) = line.merchandise() {
-
-                        let product_id = variant.product().id().to_string();
-
-                        if offer.products.contains(&product_id) {
-
-                            candidates.push(ProductDiscountCandidate {
-
-                                targets: vec![
-                                    ProductDiscountCandidateTarget::CartLine(
-                                        CartLineTarget {
-                                            id: line.id().to_string(),
-                                            quantity: None,
-                                        }
-                                    )
-                                ],
-
-                                value: ProductDiscountCandidateValue::Percentage(
-                                    Percentage {
-                                        value: Decimal::from(offer.discountValue.unwrap_or(0.0)),
-                                    }
-                                ),
-
-                                message: Some("Bundle discount".to_string()),
-                                associated_discount_code: None,
-                            });
-                        }
-                    }
-                }
-            }
-        }
-
-        // ------------------------
-        // VOLUME DISCOUNT
-        // ------------------------
-
-        if offer.r#type == "volume_discount" {
-
-            for line in input.cart().lines() {
-
-                if let Merchandise::ProductVariant(variant) = line.merchandise() {
-
-                    let product_id = variant.product().id().to_string();
-
-                    if offer.products.contains(&product_id) {
-
-                        candidates.push(ProductDiscountCandidate {
-
-                            targets: vec![
-                                ProductDiscountCandidateTarget::CartLine(
-                                    CartLineTarget {
-                                        id: line.id().to_string(),
-                                        quantity: None,
-                                    }
-                                )
-                            ],
-
-                            value: ProductDiscountCandidateValue::Percentage(
-                                Percentage {
-                                    value: Decimal::from(offer.discountValue.unwrap_or(0.0)),
-                                }
-                            ),
-
-                            message: Some("Volume discount".to_string()),
-                            associated_discount_code: None,
-                        });
-                    }
-                }
-            }
-        }
-
-        // ------------------------
-        // QUANTITY BREAK
-        // ------------------------
-
-        if offer.r#type == "quantity_break" {
-
-            if let Some(tiers) = offer.tiers {
-
-                for line in input.cart().lines() {
-
-                    if let Merchandise::ProductVariant(variant) = line.merchandise() {
-
-                        let product_id = variant.product().id().to_string();
-
-                        if offer.products.contains(&product_id) {
-
-                            let qty = line.quantity();
-
-                            let mut best_discount = 0.0;
-
-                            for tier in tiers.iter() {
-
-                                if *qty >= tier.quantity {
-
-                                    best_discount = tier.discount;
-                                }
-                            }
-
-                            if best_discount > 0.0 {
-
-                                candidates.push(ProductDiscountCandidate {
-
-                                    targets: vec![
-                                        ProductDiscountCandidateTarget::CartLine(
-                                            CartLineTarget {
-                                                id: line.id().to_string(),
-                                                quantity: None,
-                                            }
-                                        )
-                                    ],
-
-                                    value: ProductDiscountCandidateValue::Percentage(
-                                        Percentage {
-                                            value: Decimal::from(best_discount),
-                                        }
-                                    ),
-
-                                    message: Some("Quantity discount".to_string()),
-                                    associated_discount_code: None,
-                                });
-                            }
-                        }
-                    }
-                }
-            }
+            _ => {}
         }
     }
 
     Ok(CartLinesDiscountsGenerateRunResult {
-
         operations: vec![
             CartOperation::ProductDiscountsAdd(
                 ProductDiscountsAddOperation {
@@ -212,4 +102,138 @@ fn cart_lines_discounts_generate_run(
             )
         ]
     })
+}
+
+fn apply_bundle(
+    offer: &Offer,
+    cart: &Vec<CartItem>,
+    candidates: &mut Vec<ProductDiscountCandidate>,
+) {
+
+    let mut qty = 0;
+
+    for item in cart {
+
+        if offer.products.contains(&item.product_id) {
+            qty += item.quantity;
+        }
+    }
+
+    if qty < offer.minQuantity.unwrap_or(2) {
+        return;
+    }
+
+    for item in cart {
+
+        if offer.products.contains(&item.product_id) {
+
+            candidates.push(create_candidate(
+                &item.line_id,
+                offer.discountValue.unwrap_or(0.0),
+                "Bundle discount",
+            ));
+        }
+    }
+}
+
+fn apply_volume(
+    offer: &Offer,
+    cart: &Vec<CartItem>,
+    candidates: &mut Vec<ProductDiscountCandidate>,
+) {
+
+    let tiers = match &offer.tiers {
+        Some(t) => t,
+        None => return,
+    };
+
+    for item in cart {
+
+        if !offer.products.contains(&item.product_id) {
+            continue;
+        }
+
+        let mut best = 0.0;
+
+        for tier in tiers {
+
+            if item.quantity >= tier.quantity {
+                best = tier.discount;
+            }
+        }
+
+        if best > 0.0 {
+
+            candidates.push(create_candidate(
+                &item.line_id,
+                best,
+                "Volume discount",
+            ));
+        }
+    }
+}
+
+fn apply_quantity_break(
+    offer: &Offer,
+    cart: &Vec<CartItem>,
+    candidates: &mut Vec<ProductDiscountCandidate>,
+) {
+
+    let tiers = match &offer.tiers {
+        Some(t) => t,
+        None => return,
+    };
+
+    for item in cart {
+
+        if !offer.products.contains(&item.product_id) {
+            continue;
+        }
+
+        let mut best = 0.0;
+
+        for tier in tiers {
+
+            if item.quantity >= tier.quantity {
+                best = tier.discount;
+            }
+        }
+
+        if best > 0.0 {
+
+            candidates.push(create_candidate(
+                &item.line_id,
+                best,
+                "Quantity discount",
+            ));
+        }
+    }
+}
+
+fn create_candidate(
+    line_id: &str,
+    discount: f64,
+    message: &str,
+) -> ProductDiscountCandidate {
+
+    ProductDiscountCandidate {
+
+        targets: vec![
+            ProductDiscountCandidateTarget::CartLine(
+                CartLineTarget {
+                    id: line_id.to_string(),
+                    quantity: None,
+                }
+            )
+        ],
+
+        value: ProductDiscountCandidateValue::Percentage(
+            Percentage {
+                value: Decimal::from(discount),
+            }
+        ),
+
+        message: Some(message.to_string()),
+        associated_discount_code: None,
+    }
 }

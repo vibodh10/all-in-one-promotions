@@ -1,0 +1,31 @@
+{
+  "cart": {
+    "lines": [
+      {
+        "id": "gid://shopify/CartLine/1",
+        "quantity": 1,
+        "merchandise": {
+          "__typename": "ProductVariant",
+          "product": {
+            "id": "gid://shopify/Product/123"
+          }
+        }
+      },
+      {
+        "id": "gid://shopify/CartLine/2",
+        "quantity": 1,
+        "merchandise": {
+          "__typename": "ProductVariant",
+          "product": {
+            "id": "gid://shopify/Product/456"
+          }
+        }
+      }
+    ]
+  },
+  "shop": {
+    "metafield": {
+      "value": "[{\"type\":\"bundle\",\"products\":[\"gid://shopify/Product/123\",\"gid://shopify/Product/456\"],\"discountValue\":40,\"minQuantity\":2}]"
+    }
+  }
+}

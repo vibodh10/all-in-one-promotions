@@ -33,6 +33,40 @@ async function shopifyGraphQL(shop, accessToken, query, variables) {
 
 export async function createDiscount({ shop, accessToken }, offer) {
 
+  /* --------------------------------
+     1️⃣ SAVE OFFER INTO SHOP METAFIELD
+  -------------------------------- */
+
+  const metafieldMutation = `
+    mutation metafieldsSet($metafields:[MetafieldsSetInput!]!) {
+      metafieldsSet(metafields:$metafields) {
+        metafields { key namespace }
+        userErrors { field message }
+      }
+    }
+  `;
+
+  await shopifyGraphQL(
+      shop,
+      accessToken,
+      metafieldMutation,
+      {
+        metafields: [
+          {
+            ownerId: "gid://shopify/Shop/1",
+            namespace: "promotions",
+            key: "active_offers",
+            type: "json",
+            value: JSON.stringify([offer])
+          }
+        ]
+      }
+  );
+
+  /* --------------------------------
+     2️⃣ CREATE AUTOMATIC DISCOUNT
+  -------------------------------- */
+
   const mutation = `
     mutation discountAutomaticAppCreate($automaticAppDiscount: DiscountAutomaticAppInput!) {
       discountAutomaticAppCreate(automaticAppDiscount: $automaticAppDiscount) {
@@ -50,9 +84,19 @@ export async function createDiscount({ shop, accessToken }, offer) {
   const variables = {
     automaticAppDiscount: {
       title: offer.name || "Promotion",
+
       functionHandle: "promotions-discount",
 
       startsAt: new Date().toISOString(),
+
+      metafields: [
+        {
+          namespace: "$app:promotions",
+          key: "config",
+          type: "json",
+          value: JSON.stringify([offer])
+        }
+      ],
 
       combinesWith: {
         productDiscounts: true,

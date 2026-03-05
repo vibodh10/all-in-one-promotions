@@ -3,12 +3,6 @@ query CartLinesDiscountsGenerateRunInput {
     lines {
       id
       quantity
-      cost {
-        subtotalAmount {
-          amount
-          currencyCode
-        }
-      }
       merchandise {
         __typename
         ... on ProductVariant {
@@ -21,8 +15,8 @@ query CartLinesDiscountsGenerateRunInput {
     }
   }
 
-  shop {
-    metafield(namespace: "promotions", key: "active_offers") {
+  discount {
+    metafield(namespace: "$app:promotions", key: "config") {
       value
     }
   }
