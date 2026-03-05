@@ -148,10 +148,7 @@ router.put("/:id", verifyRequest, async (req, res) => {
 
       bundle_config: req.body.bundleConfig || {},
       display_settings: req.body.displaySettings || {},
-      styling: req.body.styling || {},
-
-      starts_at: req.body.starts_at || null,
-      ends_at: req.body.ends_at || null
+      styling: req.body.styling || {}
     };
 
     Object.keys(cleanData).forEach(k => {
