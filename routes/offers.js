@@ -142,8 +142,24 @@ router.put("/:id", verifyRequest, async (req, res) => {
       });
     }
 
+    const cleanData = {
+      ...req.body,
+      discount_value: Number(req.body.discountValue ?? req.body.discount_value ?? 0),
+
+      bundle_config: req.body.bundleConfig || {},
+      display_settings: req.body.displaySettings || {},
+      styling: req.body.styling || {},
+
+      starts_at: req.body.starts_at || null,
+      ends_at: req.body.ends_at || null
+    };
+
+    Object.keys(cleanData).forEach(k => {
+      if (cleanData[k] === undefined) delete cleanData[k];
+    });
+
     // 1️⃣ Save updated offer fields first
-    const saved = await database.updateOffer(id, updatedOffer.toJSON());
+    const saved = await database.updateOffer(id, cleanData);
 
     /* ---------- ACTIVE ---------- */
     if (saved.status === "active") {
