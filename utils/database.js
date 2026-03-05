@@ -80,37 +80,21 @@ async function createOffer(offerData) {
 
 /** Update an offer */
 async function updateOffer(id, updates) {
-    const toSnakeCase = (str) =>
-        str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
 
-    const cleanedUpdates = { ...updates };
+    const toSnake = (s) =>
+        s.replace(/[A-Z]/g, c => "_" + c.toLowerCase());
 
-    delete cleanedUpdates.updatedAt;
-    delete cleanedUpdates.updated_at;
-
-    const jsonFields = [
+    const jsonFields = new Set([
         "products",
         "collections",
         "tiers",
-        "bundleConfig",
-        "freeGift",
-        "displaySettings",
+        "bundle_config",
+        "display_settings",
         "styling",
-        "schedule",
-        "targeting",
-        "analytics",
         "shopify_discount_ids"
-    ];
+    ]);
 
-    // 🔑 Prevent duplicate snake_case fields
-    const snakeMap = {};
-
-    Object.entries(cleanedUpdates).forEach(([key, value]) => {
-        const snake = toSnakeCase(key);
-        snakeMap[snake] = { key, value };
-    });
-
-    const allowedFields = [
+    const allowed = new Set([
         "name",
         "description",
         "type",
@@ -124,61 +108,44 @@ async function updateOffer(id, updates) {
         "styling",
         "status",
         "shopify_discount_ids"
-    ];
+    ]);
 
-    const fields = Object.keys(snakeMap).filter(f =>
-        allowedFields.includes(f)
-    );
+    const setParts = [];
+    const values = [];
+    let i = 2;
 
-    const setClause = fields
-        .map((field, i) => `${field} = $${i + 2}`)
-        .join(", ");
+    for (const [key, raw] of Object.entries(updates)) {
 
-    const values = fields.map((snake) => {
-        const { key, value } = snakeMap[snake];
+        const column = toSnake(key);
+        if (!allowed.has(column)) continue;
 
-        if (value === undefined) return null;
+        let value = raw;
 
-        let v = value;
-
-        // Fix Shopify discount IDs
-        if (key === "shopify_discount_ids") {
-
-            if (!v) return JSON.stringify([]);
-
-            if (!Array.isArray(v)) {
-                v = [v];
-            }
-
-            v = v.map(id =>
-                String(id)
-                    .replace(/[{}"]/g, "")   // remove bad characters
-                    .trim()
-            );
-
-            return JSON.stringify(v);
+        if (column === "shopify_discount_ids") {
+            if (!value) value = [];
+            if (!Array.isArray(value)) value = [value];
         }
 
-        if (jsonFields.includes(key)) {
-            return JSON.stringify(v ?? {});
+        if (jsonFields.has(column)) {
+            value = JSON.stringify(value ?? {});
         }
 
-        if (typeof v === "object" && v !== null) {
-            if (Object.keys(v).length === 0) {
-                return null;
-            }
-        }
+        setParts.push(`${column} = $${i++}`);
+        values.push(value);
+    }
 
-        return v;
-    });
+    if (!setParts.length) {
+        return null;
+    }
 
-    const result = await pool.query(
-        `UPDATE offers
-         SET ${setClause}${fields.length ? "," : ""} updated_at = NOW()
-         WHERE id = $1
-         RETURNING *`,
-        [id, ...values]
-    );
+    const sql = `
+    UPDATE offers
+    SET ${setParts.join(", ")}, updated_at = NOW()
+    WHERE id = $1
+    RETURNING *
+  `;
+
+    const result = await pool.query(sql, [id, ...values]);
 
     return result.rows[0];
 }
