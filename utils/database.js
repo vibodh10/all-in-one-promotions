@@ -84,6 +84,7 @@ async function updateOffer(id, updates) {
         str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
 
     const cleanedUpdates = { ...updates };
+
     delete cleanedUpdates.updatedAt;
     delete cleanedUpdates.updated_at;
 
@@ -98,26 +99,35 @@ async function updateOffer(id, updates) {
         "schedule",
         "targeting",
         "analytics",
-        "shopify_discount_ids" // ✅ ADD THIS
+        "shopify_discount_ids"
     ];
 
-    const fields = Object.keys(cleanedUpdates);
+    // 🔑 Prevent duplicate snake_case fields
+    const snakeMap = {};
+
+    Object.entries(cleanedUpdates).forEach(([key, value]) => {
+        const snake = toSnakeCase(key);
+        snakeMap[snake] = { key, value };
+    });
+
+    const fields = Object.keys(snakeMap);
 
     const setClause = fields
-        .map((field, i) => `${toSnakeCase(field)} = $${i + 2}`)
+        .map((field, i) => `${field} = $${i + 2}`)
         .join(", ");
 
-    const values = fields.map((f) =>
-        jsonFields.includes(f)
-            ? JSON.stringify(cleanedUpdates[f])
-            : cleanedUpdates[f]
-    );
+    const values = fields.map((snake) => {
+        const { key, value } = snakeMap[snake];
+        return jsonFields.includes(key)
+            ? JSON.stringify(value)
+            : value;
+    });
 
     const result = await pool.query(
         `UPDATE offers
          SET ${setClause}${fields.length ? "," : ""} updated_at = NOW()
          WHERE id = $1
-             RETURNING *`,
+         RETURNING *`,
         [id, ...values]
     );
 
