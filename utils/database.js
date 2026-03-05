@@ -121,14 +121,20 @@ async function updateOffer(id, updates) {
 
         if (value === undefined) return null;
 
-        // prevent {} being inserted into timestamp fields
-        if (typeof value === "object" && value !== null && Object.keys(value).length === 0) {
-            return jsonFields.includes(key) ? JSON.stringify(value) : null;
+        let v = value;
+
+        // Fix Shopify discount IDs
+        if (key === "shopify_discount_ids") {
+            if (typeof v === "string") {
+                v = [v];
+            }
         }
 
-        return jsonFields.includes(key)
-            ? JSON.stringify(value)
-            : value;
+        if (jsonFields.includes(key)) {
+            return JSON.stringify(v ?? {});
+        }
+
+        return v;
     });
 
     const result = await pool.query(
