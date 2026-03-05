@@ -50,7 +50,7 @@ export async function createDiscount({ shop, accessToken }, offer) {
   const variables = {
     automaticAppDiscount: {
       title: offer.name || "Promotion",
-      functionId: process.env.SHOPIFY_FUNCTION_ID,
+      functionHandle: "promotions-discount",
 
       startsAt: new Date().toISOString(),
 
