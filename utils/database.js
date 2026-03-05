@@ -118,6 +118,14 @@ async function updateOffer(id, updates) {
 
     const values = fields.map((snake) => {
         const { key, value } = snakeMap[snake];
+
+        if (value === undefined) return null;
+
+        // prevent {} being inserted into timestamp fields
+        if (typeof value === "object" && value !== null && Object.keys(value).length === 0) {
+            return jsonFields.includes(key) ? JSON.stringify(value) : null;
+        }
+
         return jsonFields.includes(key)
             ? JSON.stringify(value)
             : value;
