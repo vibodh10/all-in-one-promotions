@@ -12,6 +12,7 @@ import {
   disableDiscount,
 } from "../utils/shopifyFunctions.js";
 import pool from "../utils/db.js";
+import {camelize} from "../utils/camelize.js";
 
 /* ======================================================
    STOREFRONT (App Proxy)
@@ -43,7 +44,7 @@ router.get("/", verifyRequest, async (req, res) => {
 
     res.json({
       success: true,
-      data: offers,
+      data: camelize(offers),
       count: offers.length,
     });
   } catch (error) {
@@ -65,7 +66,7 @@ router.get("/:id", verifyRequest, async (req, res) => {
       return res.status(404).json({ error: "Offer not found" });
     }
 
-    res.json({ success: true, data: offer });
+    res.json({ success: true, data: camelize(offer) });
   } catch (error) {
     console.error("Error fetching offer:", error);
     res.status(500).json({ error: "Failed to fetch offer" });

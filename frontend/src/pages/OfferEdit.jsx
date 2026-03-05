@@ -91,7 +91,7 @@ function OfferEdit() {
             setOfferData(prev => ({
                 ...prev,
                 ...data,
-                discountType: data.discountType || data.discount_type || 'percentage'
+                discountType: data.discountType || 'percentage'
             }));
 
         } catch (err) {
