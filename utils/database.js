@@ -141,17 +141,17 @@ async function updateOffer(id, updates) {
 
         let v = value;
 
-        // Shopify discount fix
-        if (key === "shopify_discount_ids" && typeof v === "string") {
-            v = [v];
+        // Fix Shopify discount IDs
+        if (key === "shopify_discount_ids") {
+            if (!Array.isArray(v)) {
+                v = v ? [String(v).replace(/[}"]/g, "")] : [];
+            }
         }
 
-        // JSON columns
         if (jsonFields.includes(key)) {
             return JSON.stringify(v ?? {});
         }
 
-        // Prevent {} being written to timestamp columns
         if (typeof v === "object" && v !== null) {
             if (Object.keys(v).length === 0) {
                 return null;
