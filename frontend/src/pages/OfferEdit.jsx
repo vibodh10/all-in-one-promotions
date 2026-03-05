@@ -21,7 +21,7 @@ import api from "../api/axios.js";
 function OfferEdit() {
     const navigate = useNavigate();
     const { id } = useParams();
-    
+
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
@@ -183,7 +183,7 @@ function OfferEdit() {
             setError(null);
 
             await api.delete(`/offers/${id}`, {
-                
+
             });
 
             navigate('/offers');
@@ -324,19 +324,43 @@ function OfferEdit() {
                                     )}
 
                                     {offerData.type === 'bundle' && (
-                                        <TextField
-                                            label="Bundle Discount"
-                                            type="number"
-                                            value={
-                                                offerData.discountValue !== null &&
-                                                offerData.discountValue !== undefined
-                                                    ? offerData.discountValue.toString()
-                                                    : ""
-                                            }
-                                            onChange={(value) => handleChange('discountValue', parseFloat(value) || 0)}
-                                            suffix={offerData.discountType === 'percentage' ? '%' : '$'}
-                                            autoComplete="off"
-                                        />
+                                        <BlockStack gap="300">
+
+                                            <TextField
+                                                label="Bundle Discount"
+                                                type="number"
+                                                value={
+                                                    offerData.discountValue !== null &&
+                                                    offerData.discountValue !== undefined
+                                                        ? offerData.discountValue.toString()
+                                                        : ""
+                                                }
+                                                onChange={(value) =>
+                                                    handleChange('discountValue', parseFloat(value) || 0)
+                                                }
+                                                suffix={offerData.discountType === 'percentage' ? '%' : '$'}
+                                                autoComplete="off"
+                                            />
+
+                                            <TextField
+                                                label="Minimum Quantity"
+                                                type="number"
+                                                value={
+                                                    offerData.bundleConfig?.minItems !== undefined
+                                                        ? offerData.bundleConfig.minItems.toString()
+                                                        : "2"
+                                                }
+                                                onChange={(value) =>
+                                                    handleNestedChange(
+                                                        'bundleConfig',
+                                                        'minItems',
+                                                        parseInt(value) || 1
+                                                    )
+                                                }
+                                                autoComplete="off"
+                                            />
+
+                                        </BlockStack>
                                     )}
                                 </FormLayout>
                             </BlockStack>
