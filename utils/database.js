@@ -116,18 +116,18 @@ async function updateOffer(id, updates) {
         "type",
         "products",
         "collections",
-        "discountType",
-        "discountValue",
+        "discount_type",
+        "discount_value",
         "tiers",
-        "bundleConfig",
-        "displaySettings",
+        "bundle_config",
+        "display_settings",
         "styling",
         "status",
         "shopify_discount_ids"
     ];
 
     const fields = Object.keys(snakeMap).filter(f =>
-        allowedFields.includes(snakeMap[f].key)
+        allowedFields.includes(f)
     );
 
     const setClause = fields
