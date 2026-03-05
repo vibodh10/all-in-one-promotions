@@ -110,7 +110,25 @@ async function updateOffer(id, updates) {
         snakeMap[snake] = { key, value };
     });
 
-    const fields = Object.keys(snakeMap);
+    const allowedFields = [
+        "name",
+        "description",
+        "type",
+        "products",
+        "collections",
+        "discountType",
+        "discountValue",
+        "tiers",
+        "bundleConfig",
+        "displaySettings",
+        "styling",
+        "status",
+        "shopify_discount_ids"
+    ];
+
+    const fields = Object.keys(snakeMap).filter(f =>
+        allowedFields.includes(snakeMap[f].key)
+    );
 
     const setClause = fields
         .map((field, i) => `${field} = $${i + 2}`)
@@ -123,15 +141,21 @@ async function updateOffer(id, updates) {
 
         let v = value;
 
-        // Fix Shopify discount IDs
-        if (key === "shopify_discount_ids") {
-            if (typeof v === "string") {
-                v = [v];
-            }
+        // Shopify discount fix
+        if (key === "shopify_discount_ids" && typeof v === "string") {
+            v = [v];
         }
 
+        // JSON columns
         if (jsonFields.includes(key)) {
             return JSON.stringify(v ?? {});
+        }
+
+        // Prevent {} being written to timestamp columns
+        if (typeof v === "object" && v !== null) {
+            if (Object.keys(v).length === 0) {
+                return null;
+            }
         }
 
         return v;
