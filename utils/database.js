@@ -114,9 +114,16 @@ async function updateOffer(id, updates) {
     const values = [];
     let i = 2;
 
+    const seen = new Set();
+
     for (const [key, raw] of Object.entries(updates)) {
 
         const column = toSnake(key);
+
+        // skip duplicates
+        if (seen.has(column)) continue;
+        seen.add(column);
+
         if (!allowed.has(column)) continue;
 
         let value = raw;
