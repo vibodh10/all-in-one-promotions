@@ -143,9 +143,20 @@ async function updateOffer(id, updates) {
 
         // Fix Shopify discount IDs
         if (key === "shopify_discount_ids") {
+
+            if (!v) return JSON.stringify([]);
+
             if (!Array.isArray(v)) {
-                v = v ? [String(v).replace(/[}"]/g, "")] : [];
+                v = [v];
             }
+
+            v = v.map(id =>
+                String(id)
+                    .replace(/[{}"]/g, "")   // remove bad characters
+                    .trim()
+            );
+
+            return JSON.stringify(v);
         }
 
         if (jsonFields.includes(key)) {
