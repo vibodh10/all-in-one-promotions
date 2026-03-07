@@ -23,6 +23,8 @@ cart_lines_discounts_generate_run_input::cart::lines::Merchandise;
 
 use shopify_function::Result;
 
+use std::collections::{HashMap, HashSet};
+
 #[derive(Deserialize)]
 struct Offer {
     r#type: String,
@@ -54,14 +56,13 @@ fn cart_lines_discounts_generate_run(
         None => vec![],
     };
 
-    // --------------------------------
+    //--------------------------------
     // Scan cart once
-    // --------------------------------
+    //--------------------------------
 
     let mut cart_items: Vec<CartItem> = vec![];
 
     for line in input.cart().lines() {
-
         if let Merchandise::ProductVariant(variant) = line.merchandise() {
 
             cart_items.push(CartItem {
@@ -72,21 +73,34 @@ fn cart_lines_discounts_generate_run(
         }
     }
 
+    //--------------------------------
+    // Build product lookup map
+    //--------------------------------
+
+    let mut product_map: HashMap<String, Vec<&CartItem>> = HashMap::new();
+
+    for item in &cart_items {
+        product_map
+            .entry(item.product_id.clone())
+            .or_default()
+            .push(item);
+    }
+
     let mut candidates: Vec<ProductDiscountCandidate> = vec![];
 
-    // --------------------------------
-    // Process each offer
-    // --------------------------------
+    //--------------------------------
+    // Process offers
+    //--------------------------------
 
     for offer in offers {
 
         match offer.r#type.as_str() {
 
-            "bundle" => apply_bundle(&offer, &cart_items, &mut candidates),
+            "bundle" => apply_bundle(&offer, &product_map, &mut candidates),
 
-            "volume_discount" => apply_volume(&offer, &cart_items, &mut candidates),
+            "volume_discount" => apply_volume(&offer, &product_map, &mut candidates),
 
-            "quantity_break" => apply_quantity_break(&offer, &cart_items, &mut candidates),
+            "quantity_break" => apply_quantity_break(&offer, &product_map, &mut candidates),
 
             _ => {}
         }
@@ -106,35 +120,42 @@ fn cart_lines_discounts_generate_run(
 
 fn apply_bundle(
     offer: &Offer,
-    cart: &Vec<CartItem>,
+    product_map: &HashMap<String, Vec<&CartItem>>,
     candidates: &mut Vec<ProductDiscountCandidate>,
 ) {
 
-    let mut qty = 0;
+    let mut unique_products: HashSet<String> = HashSet::new();
 
-    for item in cart {
-
-        if offer.products.contains(&item.product_id) {
-            qty += item.quantity;
+    for product in &offer.products {
+        if product_map.contains_key(product) {
+            unique_products.insert(product.clone());
         }
     }
 
-    if qty < offer.minQuantity.unwrap_or(2) {
+    if unique_products.len() < offer.minQuantity.unwrap_or(2) as usize {
         return;
     }
 
-    if let Some(item) = cart.iter().find(|i| offer.products.contains(&i.product_id)) {
-        candidates.push(create_candidate(
-            &item.line_id,
-            offer.discountValue.unwrap_or(0.0),
-            "Bundle discount",
-        ));
+    // apply bundle discount to first matching item
+    for product in &offer.products {
+        if let Some(items) = product_map.get(product) {
+
+            let item = items[0];
+
+            candidates.push(create_candidate(
+                &item.line_id,
+                offer.discountValue.unwrap_or(0.0),
+                "Bundle discount",
+            ));
+
+            break;
+        }
     }
 }
 
 fn apply_volume(
     offer: &Offer,
-    cart: &Vec<CartItem>,
+    product_map: &HashMap<String, Vec<&CartItem>>,
     candidates: &mut Vec<ProductDiscountCandidate>,
 ) {
 
@@ -143,34 +164,36 @@ fn apply_volume(
         None => return,
     };
 
-    for item in cart {
+    for product in &offer.products {
 
-        if !offer.products.contains(&item.product_id) {
-            continue;
-        }
+        if let Some(items) = product_map.get(product) {
 
-        let mut best = 0.0;
+            for item in items {
 
-        for tier in tiers {
-            if item.quantity >= tier.quantity && tier.discount > best {
-                best = tier.discount;
+                let mut best = 0.0;
+
+                for tier in tiers {
+                    if item.quantity >= tier.quantity && tier.discount > best {
+                        best = tier.discount;
+                    }
+                }
+
+                if best > 0.0 {
+
+                    candidates.push(create_candidate(
+                        &item.line_id,
+                        best,
+                        "Volume discount",
+                    ));
+                }
             }
-        }
-
-        if best > 0.0 {
-
-            candidates.push(create_candidate(
-                &item.line_id,
-                best,
-                "Volume discount",
-            ));
         }
     }
 }
 
 fn apply_quantity_break(
     offer: &Offer,
-    cart: &Vec<CartItem>,
+    product_map: &HashMap<String, Vec<&CartItem>>,
     candidates: &mut Vec<ProductDiscountCandidate>,
 ) {
 
@@ -179,28 +202,29 @@ fn apply_quantity_break(
         None => return,
     };
 
-    for item in cart {
+    for product in &offer.products {
 
-        if !offer.products.contains(&item.product_id) {
-            continue;
-        }
+        if let Some(items) = product_map.get(product) {
 
-        let mut best = 0.0;
+            for item in items {
 
-        for tier in tiers {
+                let mut best = 0.0;
 
-            if item.quantity >= tier.quantity {
-                best = tier.discount;
+                for tier in tiers {
+                    if item.quantity >= tier.quantity && tier.discount > best {
+                        best = tier.discount;
+                    }
+                }
+
+                if best > 0.0 {
+
+                    candidates.push(create_candidate(
+                        &item.line_id,
+                        best,
+                        "Quantity discount",
+                    ));
+                }
             }
-        }
-
-        if best > 0.0 {
-
-            candidates.push(create_candidate(
-                &item.line_id,
-                best,
-                "Quantity discount",
-            ));
         }
     }
 }
@@ -224,7 +248,7 @@ fn create_candidate(
 
         value: ProductDiscountCandidateValue::Percentage(
             Percentage {
-                value: Decimal::from(discount / 100.0),
+                value: Decimal::from(discount),
             }
         ),
 

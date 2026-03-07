@@ -301,12 +301,19 @@ async function deleteShopData(shopId) {
 async function getOffersByProduct(productId, shopId) {
     const result = await pool.query(
         `
-            SELECT * FROM offers
+            SELECT *
+            FROM offers
             WHERE shop_id = $1
               AND status = 'active'
-              AND products @> $2::jsonb
+              AND EXISTS (
+                SELECT 1
+                FROM jsonb_array_elements_text(products) AS p
+                WHERE p = $2
+                   OR p LIKE '%' || $2 || '%'
+                   OR $2 LIKE '%' || p || '%'
+            )
         `,
-        [shopId, JSON.stringify([productId])]
+        [shopId, productId]
     );
 
     return result.rows;

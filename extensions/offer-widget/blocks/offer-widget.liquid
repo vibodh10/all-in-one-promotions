@@ -15,14 +15,10 @@
     .smart-offer__title{display:flex;align-items:center;gap:10px;font-size:22px;font-weight:700;margin:0 0 8px}
     .smart-offer__desc{margin:0 0 14px;opacity:.8}
     .smart-offer__tiers{display:flex;flex-direction:column;gap:10px;margin:0 0 16px;padding:0;list-style:none}
-    .smart-offer__tier{border:1px solid rgba(0,0,0,.12);border-radius:12px;padding:12px 12px}
-    .smart-offer__tier label{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer}
-    .smart-offer__left{display:flex;align-items:center;gap:10px}
-    .smart-offer__badge{font-weight:700}
-    .smart-offer__save{font-weight:800}
-    .smart-offer__btn{width:100%;border-radius:12px;padding:14px 16px;font-weight:800;border:0;cursor:pointer}
-    .smart-offer__btn[disabled]{opacity:.5;cursor:not-allowed}
-    .smart-offer__error{margin-top:10px;color:#b00020;font-size:14px}
+    .smart-offer__tier{border:1px solid rgba(0,0,0,.12);border-radius:12px;padding:12px}
+    .smart-offer__tier label{display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+    .smart-offer__btn{width:100%;border-radius:12px;padding:14px;font-weight:800;border:0;cursor:pointer;background:#000;color:#fff}
+    .smart-offer__btn[disabled]{opacity:.5}
   </style>
 
   <script>
@@ -45,81 +41,18 @@
         }
 
         const offer = data.offers[0];
-        const tiers = Array.isArray(offer.tiers) ? offer.tiers : [];
 
-        if (!tiers.length) {
-          root.innerHTML = "";
+        if (offer.type === "bundle") {
+          renderBundle(offer);
           return;
         }
 
-        const isPercentage =
-          (offer.discountType || "").toLowerCase().includes("percent");
+        if (offer.type === "volume_discount" || offer.type === "quantity_break") {
+          renderTierOffer(offer);
+          return;
+        }
 
-        const tierHTML = tiers.map((tier, index) => {
-          const quantity = Number(tier.quantity);
-          const discount = Number(tier.discount);
-          const currency = window.Shopify?.currency?.active || "GBP";
-
-          const money = new Intl.NumberFormat(undefined, {
-            style: "currency",
-            currency
-          });
-
-          return `
-            <li class="smart-offer__tier">
-              <label>
-                <input type="radio" name="smart-tier" value="${quantity}" ${index === 0 ? "checked" : ""}>
-                <span>Buy ${quantity}+</span>
-                <strong>${isPercentage ? `Save ${discount}%` : `Save ${money.format(discount)}`}</strong>
-              </label>
-            </li>
-          `;
-        }).join("");
-
-        root.innerHTML = `
-          <div class="smart-offer__title">🎁 ${offer.name || "Offer"}</div>
-          <ul class="smart-offer__tiers">${tierHTML}</ul>
-          <button id="smart-offer-btn" class="smart-offer__btn">Add bundle to cart</button>
-        `;
-
-        const btn = document.getElementById("smart-offer-btn");
-
-        btn.addEventListener("click", async () => {
-
-          const selected = root.querySelector('input[name="smart-tier"]:checked');
-          if (!selected) return alert("Select an option");
-
-          const quantity = Number(selected.value);
-
-          btn.disabled = true;
-          btn.textContent = "Adding...";
-
-          try {
-
-            await fetch("/cart/add.js", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-              },
-              body: JSON.stringify({
-                items: [
-                  {
-                    id: Number(variantId),
-                    quantity: quantity
-                  }
-                ]
-              })
-            });
-
-            window.location.href = "/cart";
-
-          } catch (err) {
-            alert("Failed to add to cart");
-            btn.disabled = false;
-            btn.textContent = "Add bundle to cart";
-          }
-        });
+        root.innerHTML = "";
 
       })
       .catch(err => {
@@ -127,8 +60,111 @@
         root.innerHTML = "";
       });
 
+    /* ----------------------------- */
+    /* Bundle Offer                  */
+    /* ----------------------------- */
+
+    function renderBundle(offer){
+
+      root.innerHTML = `
+        <div class="smart-offer__title">🎁 ${offer.name || "Bundle & Save"}</div>
+        <p class="smart-offer__desc">
+          Buy ${offer.minQuantity || 2}+ items and save ${offer.discountValue || 0}% automatically
+        </p>
+      `;
+    }
+
+    /* ----------------------------- */
+    /* Tiered Offer                  */
+    /* ----------------------------- */
+
+    function renderTierOffer(offer){
+
+      const tiers = Array.isArray(offer.tiers) ? offer.tiers : [];
+
+      if (!tiers.length){
+        root.innerHTML = "";
+        return;
+      }
+
+      const currency = window.Shopify?.currency?.active || "GBP";
+
+      const money = new Intl.NumberFormat(undefined,{
+        style:"currency",
+        currency
+      });
+
+      const tierHTML = tiers.map((tier,index)=>{
+
+        const quantity = Number(tier.quantity);
+        const discount = Number(tier.discount);
+
+        return `
+          <li class="smart-offer__tier">
+            <label>
+              <input type="radio" name="smart-tier" value="${quantity}" ${index===0?"checked":""}>
+              <span>Buy ${quantity}+</span>
+              <strong>Save ${discount}%</strong>
+            </label>
+          </li>
+        `;
+
+      }).join("");
+
+      root.innerHTML = `
+        <div class="smart-offer__title">🎁 ${offer.name || "Special Offer"}</div>
+        <ul class="smart-offer__tiers">${tierHTML}</ul>
+        <button id="smart-offer-btn" class="smart-offer__btn">Add to cart</button>
+      `;
+
+      const btn = document.getElementById("smart-offer-btn");
+
+      btn.addEventListener("click", async () => {
+
+        const selected = root.querySelector('input[name="smart-tier"]:checked');
+        if (!selected) return;
+
+        const quantity = Number(selected.value);
+
+        btn.disabled = true;
+        btn.textContent = "Adding...";
+
+        try{
+
+          await fetch("/cart/add.js",{
+            method:"POST",
+            headers:{
+              "Content-Type":"application/json",
+              "Accept":"application/json"
+            },
+            body:JSON.stringify({
+              items:[
+                {
+                  id:Number(variantId),
+                  quantity:quantity
+                }
+              ]
+            })
+          });
+
+          window.location.href="/cart";
+
+        }catch(err){
+
+          console.error(err);
+          btn.disabled=false;
+          btn.textContent="Add to cart";
+          alert("Failed to add to cart");
+
+        }
+
+      });
+
+    }
+
   })();
   </script>
+
 {% endif %}
 
 {% schema %}
