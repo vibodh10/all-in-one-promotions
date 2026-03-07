@@ -236,40 +236,40 @@ function Settings() {
                             </BlockStack>
                         </Card>
 
-                        <Card>
-                            <BlockStack gap="400">
-                                <Text variant="headingMd" as="h2">
-                                    Advanced Settings
-                                </Text>
+                        {/*<Card>*/}
+                        {/*    <BlockStack gap="400">*/}
+                        {/*        <Text variant="headingMd" as="h2">*/}
+                        {/*            Advanced Settings*/}
+                        {/*        </Text>*/}
 
-                                <FormLayout>
-                                    <Select
-                                        label="Analytics Data Retention"
-                                        options={retentionOptions}
-                                        value={settings.analyticsRetention}
-                                        onChange={(value) => handleChange('analyticsRetention', value)}
-                                        helpText="How long to keep analytics data"
-                                    />
+                        {/*        <FormLayout>*/}
+                        {/*            <Select*/}
+                        {/*                label="Analytics Data Retention"*/}
+                        {/*                options={retentionOptions}*/}
+                        {/*                value={settings.analyticsRetention}*/}
+                        {/*                onChange={(value) => handleChange('analyticsRetention', value)}*/}
+                        {/*                helpText="How long to keep analytics data"*/}
+                        {/*            />*/}
 
-                                    <Checkbox
-                                        label="Enable debug mode"
-                                        checked={settings.enableDebugMode}
-                                        onChange={(value) => handleChange('enableDebugMode', value)}
-                                        helpText="Show detailed logging in browser console"
-                                    />
+                        {/*            <Checkbox*/}
+                        {/*                label="Enable debug mode"*/}
+                        {/*                checked={settings.enableDebugMode}*/}
+                        {/*                onChange={(value) => handleChange('enableDebugMode', value)}*/}
+                        {/*                helpText="Show detailed logging in browser console"*/}
+                        {/*            />*/}
 
-                                    <TextField
-                                        label="Custom CSS"
-                                        value={settings.customCSS}
-                                        onChange={(value) => handleChange('customCSS', value)}
-                                        multiline={4}
-                                        placeholder=".smart-offer-widget { /* custom styles */ }"
-                                        helpText="Add custom CSS to style offer widgets"
-                                        autoComplete="off"
-                                    />
-                                </FormLayout>
-                            </BlockStack>
-                        </Card>
+                        {/*            <TextField*/}
+                        {/*                label="Custom CSS"*/}
+                        {/*                value={settings.customCSS}*/}
+                        {/*                onChange={(value) => handleChange('customCSS', value)}*/}
+                        {/*                multiline={4}*/}
+                        {/*                placeholder=".smart-offer-widget { /* custom styles */ }"*/}
+                        {/*                helpText="Add custom CSS to style offer widgets"*/}
+                        {/*                autoComplete="off"*/}
+                        {/*            />*/}
+                        {/*        </FormLayout>*/}
+                        {/*    </BlockStack>*/}
+                        {/*</Card>*/}
 
                         <Card>
                             <BlockStack gap="300">
