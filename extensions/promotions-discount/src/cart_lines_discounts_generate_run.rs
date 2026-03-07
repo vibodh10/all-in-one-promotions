@@ -123,16 +123,12 @@ fn apply_bundle(
         return;
     }
 
-    for item in cart {
-
-        if offer.products.contains(&item.product_id) {
-
-            candidates.push(create_candidate(
-                &item.line_id,
-                offer.discountValue.unwrap_or(0.0),
-                "Bundle discount",
-            ));
-        }
+    if let Some(item) = cart.iter().find(|i| offer.products.contains(&i.product_id)) {
+        candidates.push(create_candidate(
+            &item.line_id,
+            offer.discountValue.unwrap_or(0.0),
+            "Bundle discount",
+        ));
     }
 }
 
@@ -156,8 +152,7 @@ fn apply_volume(
         let mut best = 0.0;
 
         for tier in tiers {
-
-            if item.quantity >= tier.quantity {
+            if item.quantity >= tier.quantity && tier.discount > best {
                 best = tier.discount;
             }
         }
@@ -229,7 +224,7 @@ fn create_candidate(
 
         value: ProductDiscountCandidateValue::Percentage(
             Percentage {
-                value: Decimal::from(discount),
+                value: Decimal::from(discount / 100.0),
             }
         ),
 

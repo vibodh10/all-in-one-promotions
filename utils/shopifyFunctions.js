@@ -1,3 +1,5 @@
+import { getStoreDefaults } from "./shopifyStore.js";
+
 const API_VERSION = process.env.API_VERSION || "2026-01";
 
 /* ================================
@@ -33,6 +35,11 @@ async function shopifyGraphQL(shop, accessToken, query, variables) {
 
 export async function createDiscount({ shop, accessToken }, offer) {
 
+  /* ⭐ GET STORE DEFAULT CURRENCY */
+
+  const storeDefaults = await getStoreDefaults(shop, accessToken, shopifyGraphQL);
+  const currencyCode = storeDefaults.currencyCode;
+
   /* --------------------------------
      1️⃣ SAVE OFFER INTO SHOP METAFIELD
   -------------------------------- */
@@ -53,7 +60,7 @@ export async function createDiscount({ shop, accessToken }, offer) {
       {
         metafields: [
           {
-            ownerId: "gid://shopify/Shop/1",
+            ownerId: storeDefaults.shopId,
             namespace: "promotions",
             key: "active_offers",
             type: "json",
@@ -81,6 +88,19 @@ export async function createDiscount({ shop, accessToken }, offer) {
     }
   `;
 
+  /* ⭐ FIXED DISCOUNT VALUE SUPPORT */
+
+  let discountValue = null;
+
+  if (offer.discountType === "fixed") {
+    discountValue = {
+      fixedAmount: {
+        amount: offer.discountValue,
+        currencyCode: currencyCode
+      }
+    };
+  }
+
   const variables = {
     automaticAppDiscount: {
       title: offer.name || "Promotion",
@@ -102,7 +122,11 @@ export async function createDiscount({ shop, accessToken }, offer) {
         productDiscounts: true,
         orderDiscounts: true,
         shippingDiscounts: true
-      }
+      },
+
+      /* ⭐ attach value if fixed discount */
+      ...(discountValue && { value: discountValue })
+
     }
   };
 

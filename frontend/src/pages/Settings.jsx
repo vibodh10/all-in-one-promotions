@@ -170,34 +170,12 @@ function Settings() {
 
                                 <FormLayout>
                                     <TextField
-                                        label="Store Name"
-                                        value={settings.storeName}
-                                        onChange={(value) => handleChange('storeName', value)}
-                                        placeholder="My Store"
-                                        autoComplete="off"
-                                    />
-
-                                    <TextField
                                         label="Contact Email"
                                         type="email"
                                         value={settings.contactEmail}
                                         onChange={(value) => handleChange('contactEmail', value)}
                                         placeholder="admin@mystore.com"
                                         autoComplete="email"
-                                    />
-
-                                    <Select
-                                        label="Timezone"
-                                        options={timezoneOptions}
-                                        value={settings.timezone}
-                                        onChange={(value) => handleChange('timezone', value)}
-                                    />
-
-                                    <Select
-                                        label="Currency"
-                                        options={currencyOptions}
-                                        value={settings.currency}
-                                        onChange={(value) => handleChange('currency', value)}
                                     />
                                 </FormLayout>
                             </BlockStack>
@@ -210,14 +188,6 @@ function Settings() {
                                 </Text>
 
                                 <FormLayout>
-                                    <Select
-                                        label="Default Widget Position"
-                                        options={widgetPositionOptions}
-                                        value={settings.defaultWidgetPosition}
-                                        onChange={(value) => handleChange('defaultWidgetPosition', value)}
-                                        helpText="Where offers will appear on product pages by default"
-                                    />
-
                                     <Checkbox
                                         label="Show app branding"
                                         checked={settings.showBranding}

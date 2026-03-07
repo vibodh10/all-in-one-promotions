@@ -14,6 +14,7 @@ import analyticsRoutes from "./routes/analytics.js";
 import billingRoutes from "./routes/billing.js";
 import webhookRoutes from "./routes/webhooks.js";
 import pool from "./utils/db.js";
+import storeRoutes from "./routes/store.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -60,6 +61,7 @@ app.get("/health", (req, res) => {
 app.use(authRouter);
 
 // ✅ API routes (must include verifyRequest)
+app.use("/api/store", verifyRequest, storeRoutes);
 app.use("/api/offers", verifyRequest, offerRoutes);
 app.use("/storefront", offerRoutes);
 app.use("/api/analytics", verifyRequest, analyticsRoutes);

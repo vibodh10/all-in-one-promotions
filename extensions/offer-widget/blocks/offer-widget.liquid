@@ -58,13 +58,19 @@
         const tierHTML = tiers.map((tier, index) => {
           const quantity = Number(tier.quantity);
           const discount = Number(tier.discount);
+          const currency = window.Shopify?.currency?.active || "GBP";
+
+          const money = new Intl.NumberFormat(undefined, {
+            style: "currency",
+            currency
+          });
 
           return `
             <li class="smart-offer__tier">
               <label>
                 <input type="radio" name="smart-tier" value="${quantity}" ${index === 0 ? "checked" : ""}>
-                <span>Buy ${quantity}</span>
-                <strong>${isPercentage ? `Save ${discount}%` : `Save ${discount}`}</strong>
+                <span>Buy ${quantity}+</span>
+                <strong>${isPercentage ? `Save ${discount}%` : `Save ${money.format(discount)}`}</strong>
               </label>
             </li>
           `;
