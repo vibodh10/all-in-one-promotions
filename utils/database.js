@@ -316,7 +316,20 @@ async function getOffersByProduct(productId, shopId) {
         [shopId, productId]
     );
 
-    return result.rows;
+    return result.rows.map(o => {
+
+        const bundle = o.bundle_config || {};
+
+        return {
+            ...o,
+            minQuantity: bundle.minItems || 2,
+            maxItems: bundle.maxItems,
+            allowMixMatch: bundle.allowMixMatch,
+            requiredProducts: bundle.requiredProducts || [],
+            discountValue: o.discount_value
+        };
+
+    });
 }
 
 async function saveShop({ shop, accessToken }) {
