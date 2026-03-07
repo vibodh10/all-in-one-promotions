@@ -263,7 +263,7 @@ function Settings() {
                         {/*                value={settings.customCSS}*/}
                         {/*                onChange={(value) => handleChange('customCSS', value)}*/}
                         {/*                multiline={4}*/}
-                        {/*                placeholder=".smart-offer-widget { /* custom styles */ }"*/}
+                        {/*                placeholder=".smart-offer-widget"*/}
                         {/*                helpText="Add custom CSS to style offer widgets"*/}
                         {/*                autoComplete="off"*/}
                         {/*            />*/}
