@@ -32,9 +32,8 @@ function OfferBuilder() {
     const offerTypes = useMemo(
         () => [
             { label: "Quantity Breaks", value: "quantity_break" },
-            { label: "Bundle & Save", value: "bundle" },
+            // { label: "Bundle & Save", value: "bundle" },
             { label: "Volume Discount", value: "volume_discount" },
-            { label: "Cross-sell (Coming soon)", value: "cross_sell" },
         ],
         []
     );
@@ -42,7 +41,7 @@ function OfferBuilder() {
     const discountTypes = useMemo(
         () => [
             { label: "Percentage Off", value: "percentage" },
-            { label: "Fixed Amount Off", value: "fixed_amount" },
+            // { label: "Fixed Amount Off", value: "fixed_amount" },
         ],
         []
     );
@@ -205,10 +204,6 @@ function OfferBuilder() {
                 if (offerData.discountValue === null || offerData.discountValue === "" || Number(offerData.discountValue) <= 0) {
                     newErrors.push("Bundle: discount value must be greater than 0");
                 }
-            }
-
-            if (offerData.type === "cross_sell" && publish) {
-                newErrors.push("Cross-sell is coming soon. Please choose another offer type for now.");
             }
         }
 
@@ -509,7 +504,7 @@ function OfferBuilder() {
                 {offerData.type === "cross_sell" && (
                     <Banner tone="warning">
                         <Text as="p">
-                            Cross-sell is coming soon. For now, please use Quantity Breaks, Bundle, or Volume Discount.
+                            Cross-sell is coming soon. For now, please use Quantity Breaks or Volume Discount.
                         </Text>
                     </Banner>
                 )}

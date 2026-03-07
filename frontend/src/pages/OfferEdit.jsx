@@ -58,14 +58,13 @@ function OfferEdit() {
 
     const offerTypes = [
         { label: 'Quantity Breaks & Free Gift', value: 'quantity_break' },
-        { label: 'Bundle & Save More', value: 'bundle' },
+        // { label: 'Bundle & Save More', value: 'bundle' },
         { label: 'Volume Discount', value: 'volume_discount' },
-        { label: 'Related Products / Cross-Sell', value: 'cross_sell' }
     ];
 
     const discountTypes = [
         { label: 'Percentage Off', value: 'percentage' },
-        { label: 'Fixed Amount Off', value: 'fixed_amount' }
+        // { label: 'Fixed Amount Off', value: 'fixed_amount' }
     ];
 
     const statusOptions = [
