@@ -6,7 +6,7 @@ const API_VERSION = process.env.API_VERSION || "2026-01";
    GraphQL Helper
 ================================ */
 
-async function shopifyGraphQL(shop, accessToken, query, variables) {
+export async function shopifyGraphQL(shop, accessToken, query, variables) {
   const res = await fetch(
       `https://${shop}/admin/api/${API_VERSION}/graphql.json`,
       {
