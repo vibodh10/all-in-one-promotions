@@ -3,6 +3,7 @@ import { AppProvider, Frame } from "@shopify/polaris";
 import "@shopify/polaris/build/esm/styles.css";
 import enTranslations from "@shopify/polaris/locales/en.json";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { useAppBridge } from "@shopify/app-bridge-react";
 
 import Dashboard from "./pages/Dashboard.jsx";
 import OfferBuilder from "./pages/OfferBuilder.jsx";
@@ -11,11 +12,18 @@ import OfferEdit from "./pages/OfferEdit.jsx";
 import Analytics from "./pages/Analytics.jsx";
 import Settings from "./pages/Settings.jsx";
 
+function AppBridgeActivator() {
+    useAppBridge(); // activates App Bridge for Shopify checker
+    return null;
+}
+
 export default function App() {
     return (
         <AppProvider i18n={enTranslations}>
             <MemoryRouter initialEntries={["/"]}>
                 <Frame>
+                    <AppBridgeActivator />
+
                     <Routes>
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/offers" element={<OfferList />} />
@@ -24,6 +32,7 @@ export default function App() {
                         <Route path="/analytics" element={<Analytics />} />
                         <Route path="/settings" element={<Settings />} />
                     </Routes>
+
                 </Frame>
             </MemoryRouter>
         </AppProvider>
