@@ -39,14 +39,14 @@ app.use((req, res, next) => {
     const shopOrigin = req.query.shop ? `https://${req.query.shop}` : "";
     const csp = `
     default-src 'self' data: blob: https:;
-    script-src 'self' 'unsafe-inline' 'unsafe-eval' https:;
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.shopify.com https://*.shopifycdn.com https:;
     style-src 'self' 'unsafe-inline' https:;
     img-src 'self' data: blob: https:;
     connect-src 'self' https://argus.shopifycloud.com https://*;
     frame-ancestors ${shopOrigin} https://admin.shopify.com;
     object-src 'none';
     base-uri 'self';
-  `.replace(/\s{2,}/g, " ").trim();
+    `.replace(/\s{2,}/g, " ").trim();
 
     res.setHeader("Content-Security-Policy", csp);
     next();
