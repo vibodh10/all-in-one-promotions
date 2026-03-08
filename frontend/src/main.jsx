@@ -6,14 +6,6 @@ import axios from "axios";
 
 axios.defaults.withCredentials = true;
 
-// ✅ Force load App Bridge from Shopify CDN
-if (!window.appBridge) {
-    const script = document.createElement("script");
-    script.src = "https://cdn.shopify.com/shopifycloud/app-bridge.js";
-    script.async = false;
-    document.head.appendChild(script);
-}
-
 const params = new URLSearchParams(window.location.search);
 const host = params.get('host');
 
