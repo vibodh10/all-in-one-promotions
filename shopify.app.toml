@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "c4b43eb51d6318e8af3400b6b5a7a264"
-name = "All-in-one Promotions"
+name = "Oban All-in-one Offers"
 application_url = "https://all-in-one-promotions.onrender.com"
 embedded = true
 
