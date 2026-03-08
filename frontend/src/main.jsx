@@ -1,26 +1,26 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { Provider as AppBridgeProvider } from '@shopify/app-bridge-react';
-import App from './App.jsx';
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { createApp } from "@shopify/app-bridge";
+import { Provider as AppBridgeProvider } from "@shopify/app-bridge-react";
+import App from "./App.jsx";
 import axios from "axios";
 
 axios.defaults.withCredentials = true;
 
 const params = new URLSearchParams(window.location.search);
-const host = params.get('host');
+const host = params.get("host");
 
-if (!host) {
-    console.error("Missing host parameter in URL");
-}
-
-const appBridgeConfig = {
+const config = {
     apiKey: import.meta.env.VITE_SHOPIFY_API_KEY,
     host,
     forceRedirect: true,
 };
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-    <AppBridgeProvider config={appBridgeConfig}>
+/* Initialize App Bridge for Shopify automated check */
+const app = createApp(config);
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+    <AppBridgeProvider config={config}>
         <App />
     </AppBridgeProvider>
 );
