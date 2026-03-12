@@ -8,7 +8,7 @@ import {
     Button,
     Text,
     BlockStack,
-    InlineStack
+    InlineStack, Banner
 } from '@shopify/polaris';
 import { useNavigate } from 'react-router-dom';
 import api from "../api/axios.js";
@@ -72,6 +72,7 @@ function Dashboard() {
     return (
         <Page
             title="Dashboard"
+            subtitle="Monitor performance of your offers"
             primaryAction={{
                 content: 'Create Offer',
                 onAction: () => navigate('/offers/new')
@@ -80,6 +81,19 @@ function Dashboard() {
             <Layout>
                 <Layout.Section>
                     <BlockStack gap="500">
+
+                        {metrics?.totalOffers === 0 && (
+                            <Banner
+                                tone="info"
+                                title="Create your first offer"
+                                action={{
+                                    content: "Create Offer",
+                                    onAction: () => navigate('/offers/new')
+                                }}
+                            >
+                                Increase your store's average order value with quantity discounts.
+                            </Banner>
+                        )}
 
                         {/* Metrics */}
                         <InlineStack gap="400" wrap>

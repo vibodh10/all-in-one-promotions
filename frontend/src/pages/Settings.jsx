@@ -145,6 +145,7 @@ function Settings() {
     return (
         <Page
             title="Settings"
+            subtitle="Configure how offers works in your store"
             backAction={{ content: 'Dashboard', onAction: () => navigate('/') }}
         >
             <Layout>

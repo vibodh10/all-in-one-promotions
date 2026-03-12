@@ -190,6 +190,7 @@ function Analytics() {
     return (
         <Page
             title="Analytics"
+            subtitle="Track impressions, clicks and conversions"
             primaryAction={{
                 content: 'Export CSV',
                 onAction: handleExport,

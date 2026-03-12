@@ -293,7 +293,7 @@ async function deleteShopData(shopId) {
         await pool.query('DELETE FROM offers WHERE shop_id=$1', [shopId]);
         await pool.query('DELETE FROM analytics_events WHERE shop_id=$1', [shopId]);
         await pool.query('DELETE FROM subscriptions WHERE shop_id=$1', [shopId]);
-        await pool.query('DELETE FROM sessions WHERE shop=$1', [shopId]);
+        await pool.query('DELETE FROM shop_tokens WHERE shop=$1', [shopId]);
     }
 }
 

@@ -54,6 +54,51 @@ router.get("/", verifyRequest, async (req, res) => {
 });
 
 /* ======================================================
+   DUPLICATE OFFER
+====================================================== */
+router.post("/:id/duplicate", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const shopId = req.shop;
+
+    const original = await database.getOfferById(id, shopId);
+
+    if (!original) {
+      return res.status(404).json({ error: "Offer not found" });
+    }
+
+    const {
+      id: _id,
+      created_at,
+      updated_at,
+      impressions,
+      clicks,
+      conversions,
+      revenue,
+      ...rest
+    } = original;
+
+    const duplicatedOffer = {
+      ...rest,
+      shopId: shopId, // ✅ IMPORTANT
+      name: `${original.name} (Copy)`,
+      status: "draft"
+    };
+
+    const created = await database.createOffer(duplicatedOffer);
+
+    res.json({
+      success: true,
+      data: created
+    });
+
+  } catch (err) {
+    console.error("Duplicate offer error:", err);
+    res.status(500).json({ error: "Failed to duplicate offer" });
+  }
+});
+
+/* ======================================================
    GET SINGLE OFFER
 ====================================================== */
 router.get("/:id", verifyRequest, async (req, res) => {

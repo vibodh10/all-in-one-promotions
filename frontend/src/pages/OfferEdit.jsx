@@ -11,7 +11,7 @@ import {
     InlineStack,
     Banner,
     Spinner,
-    Text
+    Text, Modal
 } from '@shopify/polaris';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -26,6 +26,7 @@ function OfferEdit() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
     const [offerData, setOfferData] = useState({
         name: '',
@@ -172,30 +173,36 @@ function OfferEdit() {
         }
     };
 
-    const handleDelete = async () => {
-        if (!confirm('Are you sure you want to delete this offer? This cannot be undone.')) {
-            return;
-        }
+    const handleDelete = () => {
+        setDeleteModalOpen(true);
+    };
 
+    const confirmDelete = async () => {
         try {
+
             setSaving(true);
             setError(null);
 
-            await api.delete(`/offers/${id}`, {
-
-            });
+            await api.delete(`/offers/${id}`);
 
             navigate('/offers');
+
         } catch (err) {
+
             console.error('Error deleting offer:', err);
             setError('Failed to delete offer. Please try again.');
             setSaving(false);
+
         }
     };
 
     if (loading) {
         return (
-            <Page title="Edit Offer">
+            <Page
+                title={`Edit: ${offerData.name}`}
+                subtitle="Modify your offer settings and discount structure"
+                backAction={{ content: 'Offers', onAction: () => navigate('/offers') }}
+            >
                 <Layout>
                     <Layout.Section>
                         <Card>
@@ -215,6 +222,7 @@ function OfferEdit() {
     return (
         <Page
             title={`Edit: ${offerData.name}`}
+            subtitle="Modify your offer settings and discount structure"
             backAction={{ content: 'Offers', onAction: () => navigate('/offers') }}
         >
             <Layout>
@@ -417,6 +425,30 @@ function OfferEdit() {
                     </BlockStack>
                 </Layout.Section>
             </Layout>
+
+            <Modal
+                open={deleteModalOpen}
+                onClose={() => setDeleteModalOpen(false)}
+                title="Delete offer?"
+                primaryAction={{
+                    content: 'Delete',
+                    destructive: true,
+                    loading: saving,
+                    onAction: confirmDelete
+                }}
+                secondaryActions={[
+                    {
+                        content: 'Cancel',
+                        onAction: () => setDeleteModalOpen(false)
+                    }
+                ]}
+            >
+                <Modal.Section>
+                    <Text>
+                        Are you sure you want to delete this offer? This action cannot be undone.
+                    </Text>
+                </Modal.Section>
+            </Modal>
         </Page>
     );
 }

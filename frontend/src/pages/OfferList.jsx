@@ -12,17 +12,23 @@ import {
     Spinner,
     Banner,
     InlineStack,
-    BlockStack
+    BlockStack,
+    Modal
 } from '@shopify/polaris';
 import { useNavigate } from 'react-router-dom';
 import api from "../api/axios.js";
 
 function OfferList() {
+
     const navigate = useNavigate();
+
     const [loading, setLoading] = useState(true);
     const [offers, setOffers] = useState([]);
     const [error, setError] = useState(null);
     const [filterStatus, setFilterStatus] = useState('all');
+
+    const [deleteModal, setDeleteModal] = useState(false);
+    const [offerToDelete, setOfferToDelete] = useState(null);
 
     useEffect(() => {
         fetchOffers();
@@ -30,97 +36,53 @@ function OfferList() {
 
     const fetchOffers = async () => {
         try {
+
             setLoading(true);
             setError(null);
 
             const params = {};
-            if (filterStatus !== 'all') {
-                params.status = filterStatus;
-            }
+            if (filterStatus !== 'all') params.status = filterStatus;
 
-            const response = await api.get('/offers', {
-                params,
-            });
+            const response = await api.get('/offers', { params });
 
             setOffers(response.data.data || []);
+
         } catch (err) {
+
             console.error('Error fetching offers:', err);
             setError('Failed to load offers. Please try again.');
+
         } finally {
             setLoading(false);
         }
     };
 
-    const handleStatusChange = async (offerId, newStatus) => {
-        try {
-            const response = await api.patch(
-                `/offers/${offerId}/status`,
-                { status: newStatus }
-            );
+    const confirmDelete = async () => {
 
-            // Refresh offers list after successful update
+        try {
+
+            await api.delete(`/offers/${offerToDelete}`);
+
+            setDeleteModal(false);
             fetchOffers();
 
         } catch (err) {
-            console.error("Error updating offer status:", err);
 
-            // If backend returned structured error
-            if (err.response && err.response.data) {
-                const backendMessage = err.response.data.error;
-
-                if (backendMessage) {
-                    if (backendMessage.includes("already exists")) {
-                        setError(
-                            "An active offer already exists for one or more of the selected products. Please pause it before activating this one."
-                        );
-                    } else {
-                        setError(backendMessage);
-                    }
-                    return;
-                }
-            }
-
-            // Fallback message
-            setError("Unable to update offer status. Please try again.");
-        }
-    };
-
-    const handleDuplicate = async (offerId) => {
-        try {
-            const response = await api.post(`/offers/${offerId}/duplicate`);
-
-            fetchOffers(); // refresh list
-
-        } catch (err) {
-            console.error("Error duplicating offer:", err);
-
-            if (err.response?.data?.error) {
-                setError(err.response.data.error);
-            } else {
-                setError("Failed to duplicate offer.");
-            }
-        }
-    };
-
-    const handleDelete = async (offerId) => {
-        if (!confirm('Are you sure you want to delete this offer?')) {
-            return;
-        }
-
-        try {
-            await api.delete(`/offers/${offerId}`, {
-                
-            });
-
-            // Refresh offers list
-            fetchOffers();
-        } catch (err) {
             console.error('Error deleting offer:', err);
             setError('Failed to delete offer.');
+
         }
+    };
+
+    const handleDelete = (offerId) => {
+
+        setOfferToDelete(offerId);
+        setDeleteModal(true);
+
     };
 
     const getStatusBadge = (status) => {
+
         const statusMap = {
             active: { tone: 'success', label: 'Active' },
             draft: { tone: 'info', label: 'Draft' },
@@ -129,83 +91,64 @@ function OfferList() {
         };
 
         const config = statusMap[status] || { tone: 'info', label: status };
+
         return <Badge tone={config.tone}>{config.label}</Badge>;
-    };
 
-    const getOfferTypeLabel = (type) => {
-        const typeMap = {
-            quantity_break: 'Quantity Breaks',
-            bundle: 'Bundle & Save',
-            volume_discount: 'Volume Discount',
-            cross_sell: 'Cross-Sell',
-            cart_upsell: 'Cart Upsell'
-        };
-
-        return typeMap[type] || type;
     };
 
     const rows = offers.map((offer) => [
+
         offer.name,
-        getOfferTypeLabel(offer.type),
+        offer.type,
         getStatusBadge(offer.status),
-        offer.analytics?.impressions || 0,
-        offer.analytics?.clicks || 0,
-        offer.analytics?.conversions || 0,
-        offer.created_at
-            ? new Date(offer.created_at).toLocaleDateString()
-            : "-",
+
         <ButtonGroup>
             <Button size="slim" onClick={() => navigate(`/offers/${offer.id}/edit`)}>
                 Edit
             </Button>
-            {offer.status === 'active' ? (
-                <Button size="slim" onClick={() => handleStatusChange(offer.id, 'paused')}>
-                    Pause
-                </Button>
-            ) : (
-                <Button size="slim" primary onClick={() => handleStatusChange(offer.id, 'active')}>
-                    Activate
-                </Button>
-            )}
-            <Button size="slim" onClick={() => handleDuplicate(offer.id)}>
-                Duplicate
-            </Button>
+
             <Button size="slim" destructive onClick={() => handleDelete(offer.id)}>
                 Delete
             </Button>
         </ButtonGroup>
+
     ]);
 
     if (loading) {
+
         return (
-            <Page title="Offers">
+            <Page title="Offers" subtitle="Create and manage discounts to increase average order value">
                 <Layout>
                     <Layout.Section>
                         <Card>
                             <div style={{ padding: '40px', textAlign: 'center' }}>
                                 <Spinner size="large" />
-                                <Text variant="bodyMd" as="p" color="subdued">
-                                    Loading offers...
-                                </Text>
+                                <Text>Loading offers...</Text>
                             </div>
                         </Card>
                     </Layout.Section>
                 </Layout>
             </Page>
         );
+
     }
 
     return (
+
         <Page
             title="Offers"
+            subtitle="Create and manage discounts to increase average order value"
             primaryAction={{
                 content: 'Create Offer',
                 onAction: () => navigate('/offers/new')
             }}
         >
+
             <Layout>
                 <Layout.Section>
+
                     <BlockStack gap="400">
+
                         {error && (
                             <Banner tone="critical" onDismiss={() => setError(null)}>
                                 {error}
@@ -213,80 +156,62 @@ function OfferList() {
                         )}
 
                         <Card>
-                            <BlockStack gap="300">
-                                <InlineStack align="space-between">
-                                    <Text variant="headingMd" as="h2">
-                                        All Offers ({offers.length})
-                                    </Text>
-                                    <ButtonGroup>
-                                        <Button
-                                            pressed={filterStatus === 'all'}
-                                            onClick={() => setFilterStatus('all')}
-                                        >
-                                            All
-                                        </Button>
-                                        <Button
-                                            pressed={filterStatus === 'active'}
-                                            onClick={() => setFilterStatus('active')}
-                                        >
-                                            Active
-                                        </Button>
-                                        <Button
-                                            pressed={filterStatus === 'draft'}
-                                            onClick={() => setFilterStatus('draft')}
-                                        >
-                                            Draft
-                                        </Button>
-                                        <Button
-                                            pressed={filterStatus === 'paused'}
-                                            onClick={() => setFilterStatus('paused')}
-                                        >
-                                            Paused
-                                        </Button>
-                                    </ButtonGroup>
-                                </InlineStack>
 
-                                {offers.length > 0 ? (
-                                    <DataTable
-                                        columnContentTypes={[
-                                            'text',
-                                            'text',
-                                            'text',
-                                            'numeric',
-                                            'numeric',
-                                            'numeric',
-                                            'text',
-                                            'text'
-                                        ]}
-                                        headings={[
-                                            'Name',
-                                            'Type',
-                                            'Status',
-                                            'Impressions',
-                                            'Clicks',
-                                            'Conversions',
-                                            'Created',
-                                            'Actions'
-                                        ]}
-                                        rows={rows}
-                                    />
-                                ) : (
-                                    <EmptyState
-                                        heading="No offers found"
-                                        image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
-                                    >
-                                        <p>Create your first offer to start increasing conversions and AOV.</p>
-                                        <Button primary onClick={() => navigate('/offers/new')}>
-                                            Create Offer
-                                        </Button>
-                                    </EmptyState>
-                                )}
-                            </BlockStack>
+                            {offers.length > 0 ? (
+
+                                <DataTable
+                                    columnContentTypes={['text','text','text','text']}
+                                    headings={['Name','Type','Status','Actions']}
+                                    rows={rows}
+                                />
+
+                            ) : (
+
+                                <EmptyState
+                                    heading="Create your first offer"
+                                    image="https://cdn.shopify.com/shopifycloud/web/assets/v1/vite/client/en/assets/emptystate-discounts.png"
+                                    action={{
+                                        content: "Create Offer",
+                                        onAction: () => navigate('/offers/new')
+                                    }}
+                                >
+                                    <p>
+                                        Increase your average order value using quantity discounts and bundles.
+                                    </p>
+                                </EmptyState>
+
+                            )}
+
                         </Card>
+
                     </BlockStack>
+
                 </Layout.Section>
             </Layout>
+
+            <Modal
+                open={deleteModal}
+                onClose={() => setDeleteModal(false)}
+                title="Delete offer?"
+                primaryAction={{
+                    content: 'Delete',
+                    destructive: true,
+                    onAction: confirmDelete
+                }}
+                secondaryActions={[
+                    {
+                        content: 'Cancel',
+                        onAction: () => setDeleteModal(false)
+                    }
+                ]}
+            >
+                <Modal.Section>
+                    <Text>This action cannot be undone.</Text>
+                </Modal.Section>
+            </Modal>
+
         </Page>
+
     );
 }
 

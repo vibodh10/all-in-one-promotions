@@ -390,26 +390,49 @@ function OfferBuilder() {
     const renderStep2 = () => (
         <Card>
             <BlockStack gap="400">
-                <Button onClick={openProductPicker}>Select Products</Button>
 
-                <ResourceList
-                    resourceName={{ singular: "product", plural: "products" }}
-                    items={offerData.products}
-                    renderItem={(item) => {
-                        const media = item.images?.[0]?.originalSrc ? (
-                            <Thumbnail source={item.images[0].originalSrc} alt={item.title} />
-                        ) : null;
+                {offerData.products.length === 0 ? (
+                    <EmptyState
+                        heading="Select products for this offer"
+                        action={{
+                            content: "Select Products",
+                            onAction: openProductPicker
+                        }}
+                        image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+                    >
+                        <p>
+                            Choose the products that this discount offer should apply to.
+                        </p>
+                    </EmptyState>
+                ) : (
+                    <>
+                        <Button onClick={openProductPicker}>Add More Products</Button>
 
-                        return (
-                            <ResourceItem id={item.id} media={media}>
-                                <InlineStack align="space-between">
-                                    <Text>{item.title}</Text>
-                                    <Button plain icon={DeleteIcon} onClick={() => removeProduct(item.id)} />
-                                </InlineStack>
-                            </ResourceItem>
-                        );
-                    }}
-                />
+                        <ResourceList
+                            resourceName={{ singular: "product", plural: "products" }}
+                            items={offerData.products}
+                            renderItem={(item) => {
+                                const media = item.images?.[0]?.originalSrc ? (
+                                    <Thumbnail source={item.images[0].originalSrc} alt={item.title} />
+                                ) : null;
+
+                                return (
+                                    <ResourceItem id={item.id} media={media}>
+                                        <InlineStack align="space-between">
+                                            <Text>{item.title}</Text>
+                                            <Button
+                                                plain
+                                                icon={DeleteIcon}
+                                                onClick={() => removeProduct(item.id)}
+                                            />
+                                        </InlineStack>
+                                    </ResourceItem>
+                                );
+                            }}
+                        />
+                    </>
+                )}
+
             </BlockStack>
         </Card>
     );
@@ -516,7 +539,10 @@ function OfferBuilder() {
     // UI
     // -----------------------
     return (
-        <Page title="Create New Offer">
+        <Page
+            title="Create New Offer"
+            subtitle="Create a new discount to increase conversions"
+        >
             <Layout>
                 <Layout.Section>
                     <BlockStack gap="400">
