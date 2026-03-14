@@ -1,4 +1,4 @@
-# Smart Offers & Bundles Shopify App - Dockerfile
+# Oban All-in-one Offers Shopify App - Dockerfile
 
 # Build stage
 FROM node:16-alpine AS builder

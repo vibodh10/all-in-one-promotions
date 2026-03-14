@@ -1,4 +1,4 @@
-# Smart Offers & Bundles - Complete File Index
+# Oban All-in-one Offers - Complete File Index
 
 ## 📁 Project Structure
 

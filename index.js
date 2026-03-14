@@ -15,6 +15,8 @@ import billingRoutes from "./routes/billing.js";
 import webhookRoutes from "./routes/webhooks.js";
 import pool from "./utils/db.js";
 import storeRoutes from "./routes/store.js";
+import settingsRoutes from "./routes/settings.js";
+import cronRoutes from "./routes/cron.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -66,6 +68,8 @@ app.use("/api/offers", verifyRequest, offerRoutes);
 app.use("/storefront", offerRoutes);
 app.use("/api/analytics", verifyRequest, analyticsRoutes);
 app.use("/api/billing", verifyRequest, billingRoutes);
+app.use("/api/settings", verifyRequest, settingsRoutes);
+app.use("/cron", cronRoutes);
 
 // ✅ Webhooks: IMPORTANT — needs RAW body, so mount with express.raw
 app.use("/api/webhooks", express.raw({ type: "application/json" }), webhookRoutes);
@@ -135,7 +139,7 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 Smart Offers & Bundles app running on port ${PORT}`);
+    console.log(`🚀 Oban All-in-one Offers app running on port ${PORT}`);
 });
 
 export default app;

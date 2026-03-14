@@ -17,9 +17,10 @@ import {
 
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import api from "../api/axios.js";
 
 function Settings() {
-    
+
     const navigate = useNavigate();
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
@@ -27,13 +28,9 @@ function Settings() {
 
     const [settings, setSettings] = useState({
         // General Settings
-        storeName: '',
         contactEmail: '',
-        timezone: 'UTC',
-        currency: 'USD',
 
         // Display Settings
-        defaultWidgetPosition: 'below_atc',
         showBranding: true,
         enableAnimations: true,
 
@@ -47,31 +44,6 @@ function Settings() {
         enableDebugMode: false,
         customCSS: ''
     });
-
-    const timezoneOptions = [
-        { label: 'UTC', value: 'UTC' },
-        { label: 'America/New_York (EST)', value: 'America/New_York' },
-        { label: 'America/Los_Angeles (PST)', value: 'America/Los_Angeles' },
-        { label: 'America/Chicago (CST)', value: 'America/Chicago' },
-        { label: 'Europe/London (GMT)', value: 'Europe/London' },
-        { label: 'Europe/Paris (CET)', value: 'Europe/Paris' },
-        { label: 'Asia/Tokyo (JST)', value: 'Asia/Tokyo' },
-        { label: 'Australia/Sydney (AEST)', value: 'Australia/Sydney' }
-    ];
-
-    const currencyOptions = [
-        { label: 'USD ($)', value: 'USD' },
-        { label: 'EUR (€)', value: 'EUR' },
-        { label: 'GBP (£)', value: 'GBP' },
-        { label: 'CAD (C$)', value: 'CAD' },
-        { label: 'AUD (A$)', value: 'AUD' }
-    ];
-
-    const widgetPositionOptions = [
-        { label: 'Below Add to Cart', value: 'below_atc' },
-        { label: 'Above Add to Cart', value: 'above_atc' },
-        { label: 'Product Tabs', value: 'product_tabs' }
-    ];
 
     const retentionOptions = [
         { label: '30 Days', value: '30' },
@@ -87,9 +59,14 @@ function Settings() {
 
     const fetchSettings = async () => {
         try {
-            // In a real implementation, this would fetch from the backend
-            // For now, we'll use the default settings
-            console.log('Fetching settings...');
+            const res = await api.get('/settings');
+
+            if (res?.data) {
+                setSettings(prev => ({
+                    ...prev,
+                    ...res.data
+                }));
+            }
         } catch (err) {
             console.error('Error fetching settings:', err);
             setError('Failed to load settings.');
@@ -109,8 +86,7 @@ function Settings() {
             setError(null);
             setSuccess(null);
 
-            // In a real implementation, this would save to the backend
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await api.post('/settings', settings);
 
             setSuccess('Settings saved successfully!');
         } catch (err) {
@@ -124,11 +100,7 @@ function Settings() {
     const handleReset = () => {
         if (confirm('Are you sure you want to reset all settings to defaults?')) {
             setSettings({
-                storeName: '',
                 contactEmail: '',
-                timezone: 'UTC',
-                currency: 'USD',
-                defaultWidgetPosition: 'below_atc',
                 showBranding: true,
                 enableAnimations: true,
                 emailNotifications: true,
@@ -226,13 +198,6 @@ function Settings() {
                                         onChange={(value) => handleChange('weeklyReports', value)}
                                         helpText="Get weekly summaries of offer performance"
                                     />
-
-                                    <Checkbox
-                                        label="Low performance alerts"
-                                        checked={settings.lowPerformanceAlerts}
-                                        onChange={(value) => handleChange('lowPerformanceAlerts', value)}
-                                        helpText="Notify me when offers aren't performing well"
-                                    />
                                 </BlockStack>
                             </BlockStack>
                         </Card>
@@ -296,34 +261,6 @@ function Settings() {
                                         </BlockStack>
                                         <Button onClick={handleReset}>
                                             Reset to Defaults
-                                        </Button>
-                                    </InlineStack>
-
-                                    <InlineStack align="space-between">
-                                        <BlockStack gap="100">
-                                            <Text variant="bodyMd" as="p" fontWeight="semibold">
-                                                Clear Analytics Data
-                                            </Text>
-                                            <Text variant="bodySm" as="p" color="subdued">
-                                                Delete all historical analytics data
-                                            </Text>
-                                        </BlockStack>
-                                        <Button destructive>
-                                            Clear All Data
-                                        </Button>
-                                    </InlineStack>
-
-                                    <InlineStack align="space-between">
-                                        <BlockStack gap="100">
-                                            <Text variant="bodyMd" as="p" fontWeight="semibold">
-                                                Uninstall App
-                                            </Text>
-                                            <Text variant="bodySm" as="p" color="subdued">
-                                                Remove app and all associated data
-                                            </Text>
-                                        </BlockStack>
-                                        <Button destructive>
-                                            Uninstall
                                         </Button>
                                     </InlineStack>
                                 </BlockStack>

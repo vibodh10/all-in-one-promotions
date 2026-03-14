@@ -40,7 +40,16 @@
           return;
         }
 
+        const settings = data?.settings || {
+          enableAnimations: true,
+          showBranding: true
+        };
+
         const offer = data.offers[0];
+
+        if (settings.enableAnimations) {
+            root.style.transition = "all .3s ease";
+        }
 
         if (offer.type === "bundle") {
           renderBundle(offer);
@@ -111,10 +120,15 @@
 
       }).join("");
 
+      const branding = settings.showBranding
+        ? `<div class="smart-offer-brand">Powered by Oban All-in-one Offers</div>`
+        : "";
+
       root.innerHTML = `
         <div class="smart-offer__title">🎁 ${offer.name || "Special Offer"}</div>
         <ul class="smart-offer__tiers">${tierHTML}</ul>
         <button id="smart-offer-btn" class="smart-offer__btn">Add to cart</button>
+        ${branding}
       `;
 
       const btn = document.getElementById("smart-offer-btn");

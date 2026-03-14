@@ -1,7 +1,7 @@
 {
   "name": "smart-offers-bundles",
   "version": "1.0.0",
-  "description": "Smart Offers & Bundles - Shopify App for promotional offers, bundles, and discounts",
+  "description": "Oban All-in-one Offers - Shopify App for promotional offers, bundles, and discounts",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -30,7 +30,9 @@
     "express": "^4.19.2",
     "express-session": "^1.18.1",
     "firebase-admin": "^12.3.0",
-    "pg": "^8.13.0"
+    "node-cron": "^4.2.1",
+    "pg": "^8.13.0",
+    "resend": "^6.4.2"
   },
   "devDependencies": {
     "eslint": "^9.12.0",

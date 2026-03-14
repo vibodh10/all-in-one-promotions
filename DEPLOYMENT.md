@@ -1,6 +1,6 @@
-# Deployment Guide - Smart Offers & Bundles
+# Deployment Guide - Oban All-in-one Offers
 
-This guide covers deploying the Smart Offers & Bundles Shopify app to production.
+This guide covers deploying the Oban All-in-one Offers Shopify app to production.
 
 ## Prerequisites
 

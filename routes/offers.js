@@ -13,19 +13,56 @@ import {
 } from "../utils/shopifyFunctions.js";
 import pool from "../utils/db.js";
 import {camelize} from "../utils/camelize.js";
+import {sendEmail} from "../utils/email.js";
+
+async function getShopSettings(shop) {
+
+  const result = await pool.query(
+      `SELECT contact_email, email_notifications, weekly_reports
+         FROM shop_settings
+         WHERE shop_id = $1`,
+      [shop]
+  );
+
+  return result.rows[0];
+}
 
 /* ======================================================
    STOREFRONT (App Proxy)
 ====================================================== */
 router.get("/offers", async (req, res) => {
+
   const { productId, shop } = req.query;
 
   if (!productId || !shop) {
     return res.status(400).json({ error: "Missing productId or shop" });
   }
 
-  const offers = await database.getOffersByProduct(productId, shop);
-  res.json({ offers });
+  try {
+
+    const offers = await database.getOffersByProduct(productId, shop);
+
+    const settingsResult = await pool.query(
+        `
+      SELECT show_branding, enable_animations
+      FROM shop_settings
+      WHERE shop_id = $1
+      `,
+        [shop]
+    );
+
+    const settings = settingsResult.rows[0] || {};
+
+    res.json({
+      offers,
+      settings
+    });
+
+  } catch (err) {
+    console.error("Error fetching offers:", err);
+    res.status(500).json({ error: "Failed to load offers" });
+  }
+
 });
 
 /* ======================================================
@@ -149,6 +186,21 @@ router.post("/", verifyRequest, async (req, res) => {
       await database.updateOffer(created.id, {
         shopify_discount_ids: result.automaticDiscountIds,
       });
+
+      const settings = await getShopSettings(shop);
+
+      if (settings?.email_notifications && settings?.contact_email) {
+
+        await sendEmail(
+            settings.contact_email,
+            "Your offer is now live",
+            `
+            <h2>Your offer is now active</h2>
+            <p>The offer <strong>${offer.name}</strong> is now running in your store.</p>
+            `
+        );
+
+      }
     }
 
     const refreshed = await database.getOfferById(created.id, shopId);
@@ -230,6 +282,21 @@ router.put("/:id", verifyRequest, async (req, res) => {
       await database.updateOffer(id, {
         shopify_discount_ids: result.automaticDiscountIds,
       });
+
+      const settings = await getShopSettings(shop);
+
+      if (settings?.email_notifications && settings?.contact_email) {
+
+        await sendEmail(
+            settings.contact_email,
+            "Your offer is now live",
+            `
+            <h2>Your offer is now active</h2>
+            <p>The offer <strong>${cleanData.name}</strong> is now running in your store.</p>
+            `
+        );
+
+      }
     }
 
     /* ---------- NOT ACTIVE ---------- */
@@ -247,6 +314,21 @@ router.put("/:id", verifyRequest, async (req, res) => {
       await database.updateOffer(id, {
         shopify_discount_ids: [],
       });
+
+      const settings = await getShopSettings(shop);
+
+      if (settings?.email_notifications && settings?.contact_email) {
+
+        await sendEmail(
+            settings.contact_email,
+            "Offer ended",
+            `
+            <h2>Your offer has ended</h2>
+            <p>The offer <strong>${cleanData.name}</strong> has finished running.</p>
+            `
+        );
+
+      }
     }
 
     const refreshed = await database.getOfferById(id, shopId);

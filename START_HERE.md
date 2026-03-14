@@ -1,4 +1,4 @@
-# 🚀 START HERE - Smart Offers & Bundles Shopify App
+# 🚀 START HERE - Oban All-in-one Offers Shopify App
 
 ## ⚡ Quick Start (Choose Your Path)
 
@@ -202,7 +202,7 @@ This is a **complete, production-ready** Shopify app. Everything needed to launc
 
 ## 📞 Project Information
 
-**Project**: Smart Offers & Bundles
+**Project**: Oban All-in-one Offers
 **Type**: Shopify App
 **Status**: Production Ready
 **Version**: 1.0.0

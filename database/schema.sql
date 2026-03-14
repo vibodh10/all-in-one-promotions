@@ -1,4 +1,4 @@
--- Smart Offers & Bundles Database Schema
+-- Oban All-in-one Offers Database Schema
 -- PostgreSQL version
 
 -- Shops table

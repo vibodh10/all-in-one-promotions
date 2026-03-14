@@ -1,4 +1,4 @@
-# Smart Offers & Bundles - Project Summary
+# Oban All-in-one Offers - Project Summary
 
 ## Overview
 

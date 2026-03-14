@@ -97,7 +97,7 @@ router.post("/subscribe", async (req, res) => {
             path: "recurring_application_charges",
             data: {
                 recurring_application_charge: {
-                    name: `Smart Offers & Bundles - ${planDetails.name}`,
+                    name: `Oban All-in-one Offers - ${planDetails.name}`,
                     price: planDetails.price,
                     return_url: `${process.env.APP_URL}/api/billing/callback?plan=${plan}`,
                     test: process.env.NODE_ENV !== "production",

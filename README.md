@@ -1,4 +1,4 @@
-# Smart Offers & Bundles - Shopify App
+# Oban All-in-one Offers - Shopify App
 
 A comprehensive Shopify app for creating and managing promotional offers, bundles, discounts, and upsells to increase AOV and conversions.
 

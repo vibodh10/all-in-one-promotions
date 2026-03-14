@@ -1,5 +1,5 @@
 /**
- * Smart Offers & Bundles - Storefront Widget
+ * Oban All-in-one Offers - Storefront Widget
  * This script is injected into the merchant's storefront to display offers
  */
 

@@ -27,7 +27,7 @@ npm install
 2. Click "Apps" → "Create app"
 3. Choose "Public app" or "Custom app"
 4. Fill in app details:
-   - App name: Smart Offers & Bundles
+   - App name: Oban All-in-one Offers
    - App URL: Your URL (e.g., https://your-app.com)
 5. Note your API key and API secret
 
@@ -274,4 +274,4 @@ You'll know everything is working when:
 **Difficulty**: Easy
 **Status**: Production Ready
 
-🎉 **Congratulations!** Your Smart Offers & Bundles app is ready to use.
+🎉 **Congratulations!** Your Oban All-in-one Offers app is ready to use.
