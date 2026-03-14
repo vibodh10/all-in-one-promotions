@@ -11,10 +11,18 @@ const router = express.Router();
  * One single Shopify API instance (ONLY here).
  * Do NOT create another instance elsewhere.
  */
+const API_KEYS = [
+    process.env.VITE_SHOPIFY_API_KEY,
+    process.env.SHOPIFY_APP_KEY_TEST,
+];
+
 export const shopify = shopifyApi({
-    apiKey: process.env.VITE_SHOPIFY_API_KEY,
+    apiKey: API_KEYS[0], // default
     apiSecretKey: process.env.SHOPIFY_API_SECRET,
-    scopes: (process.env.SHOPIFY_SCOPES || "").split(",").map(s => s.trim()).filter(Boolean),
+    scopes: (process.env.SHOPIFY_SCOPES || "")
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean),
     hostName: (process.env.HOST || "").replace(/https?:\/\//, ""),
     apiVersion: LATEST_API_VERSION,
     isEmbeddedApp: true,
@@ -27,6 +35,12 @@ router.get("/auth", async (req, res) => {
     try {
         const shop = req.query.shop;
         if (!shop) return res.status(400).send("Missing shop param");
+
+        const clientId = req.query.client_id;
+
+        if (clientId && !API_KEYS.includes(clientId)) {
+            return res.status(401).send("Invalid client_id");
+        }
 
         await shopify.auth.begin({
             shop,
