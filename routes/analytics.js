@@ -182,7 +182,7 @@ router.get('/dashboard', async (req, res) => {
           break;
         case 'purchase_complete':
           metrics.totalConversions++;
-          metrics.totalRevenue += event.cartValue || 0;
+          metrics.totalRevenue += Number(event.cartValue || 0);
           break;
       }
     });
