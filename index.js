@@ -17,6 +17,7 @@ import pool from "./utils/db.js";
 import storeRoutes from "./routes/store.js";
 import settingsRoutes from "./routes/settings.js";
 import cronRoutes from "./routes/cron.js";
+import storefrontAnalytics from "./routes/storefrontAnalytics.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -70,6 +71,7 @@ app.use("/api/analytics", verifyRequest, analyticsRoutes);
 app.use("/api/billing", verifyRequest, billingRoutes);
 app.use("/api/settings", verifyRequest, settingsRoutes);
 app.use("/cron", cronRoutes);
+app.use("/storefront/analytics", storefrontAnalytics);
 
 // ✅ Webhooks: IMPORTANT — needs RAW body, so mount with express.raw
 app.use("/api/webhooks", express.raw({ type: "application/json" }), webhookRoutes);

@@ -31,6 +31,27 @@
     const productGid = root.dataset.productGid;
     const shop = root.dataset.shop;
 
+    /* ----------------------------- */
+    /* Analytics helper              */
+    /* ----------------------------- */
+
+    function trackEvent(eventName, offerId, metadata = {}) {
+
+      fetch("/apps/promotions/api/analytics/event", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          eventName,
+          offerId,
+          metadata,
+          shop
+        })
+      }).catch(err => console.warn("Analytics error:", err));
+
+    }
+
     fetch(`/apps/promotions/storefront/offers?productId=${encodeURIComponent(productGid)}&shop=${encodeURIComponent(shop)}`)
       .then(res => res.json())
       .then(data => {
@@ -47,8 +68,24 @@
 
         const offer = data.offers[0];
 
+        /* -------- TRACK OFFER VIEW -------- */
+
+        const observer = new IntersectionObserver(entries => {
+
+          if (entries[0].isIntersecting) {
+
+            trackEvent("offer_view", offer.id);
+
+            observer.disconnect();
+
+          }
+
+        });
+
+        observer.observe(root);
+
         if (settings.enableAnimations) {
-            root.style.transition = "all .3s ease";
+          root.style.transition = "all .3s ease";
         }
 
         if (offer.type === "bundle") {
@@ -140,6 +177,12 @@
 
         const quantity = Number(selected.value);
 
+        /* -------- TRACK CLICK -------- */
+
+        trackEvent("offer_click", offer.id, {
+          quantity
+        });
+
         btn.disabled = true;
         btn.textContent = "Adding...";
 
@@ -159,6 +202,12 @@
                 }
               ]
             })
+          });
+
+          /* -------- TRACK OFFER APPLIED -------- */
+
+          trackEvent("offer_applied", offer.id, {
+            quantity
           });
 
           window.location.href="/cart";
