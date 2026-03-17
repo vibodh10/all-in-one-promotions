@@ -11,14 +11,73 @@
   </div>
 
   <style>
-    .smart-offer{border:1px solid rgba(0,0,0,.12);border-radius:14px;padding:18px;margin-top:14px;background:#fff}
-    .smart-offer__title{display:flex;align-items:center;gap:10px;font-size:22px;font-weight:700;margin:0 0 8px}
-    .smart-offer__desc{margin:0 0 14px;opacity:.8}
-    .smart-offer__tiers{display:flex;flex-direction:column;gap:10px;margin:0 0 16px;padding:0;list-style:none}
-    .smart-offer__tier{border:1px solid rgba(0,0,0,.12);border-radius:12px;padding:12px}
-    .smart-offer__tier label{display:flex;align-items:center;justify-content:space-between;cursor:pointer}
-    .smart-offer__btn{width:100%;border-radius:12px;padding:14px;font-weight:800;border:0;cursor:pointer;background:#000;color:#fff}
-    .smart-offer__btn[disabled]{opacity:.5}
+  .smart-offer{
+    border:1px solid rgba(0,0,0,.12);
+    border-radius:14px;
+    padding:18px;
+    margin-top:14px;
+    background:inherit;
+    color:inherit;
+    font-family:inherit;
+  }
+
+  .smart-offer__title{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:1.3em;
+    font-weight:700;
+    margin:0 0 8px;
+  }
+
+  .smart-offer__desc{
+    margin:0 0 14px;
+    opacity:.8;
+  }
+
+  .smart-offer__tiers{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin:0 0 16px;
+    padding:0;
+    list-style:none;
+  }
+
+  .smart-offer__tier{
+    border:1px solid rgba(0,0,0,.12);
+    border-radius:10px;
+    padding:12px;
+  }
+
+  .smart-offer__tier label{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    cursor:pointer;
+  }
+
+  .smart-offer__btn{
+    width:100%;
+    border-radius:10px;
+    padding:12px;
+    font-weight:700;
+    border:1px solid rgba(0,0,0,.15);
+    cursor:pointer;
+    background:inherit;
+    color:inherit;
+  }
+
+  .smart-offer__btn[disabled]{
+    opacity:.5;
+  }
+
+  .smart-offer-brand{
+    margin-top:8px;
+    font-size:12px;
+    opacity:.55;
+    text-align:right;
+  }
   </style>
 
   <script>
@@ -85,7 +144,16 @@
         observer.observe(root);
 
         if (settings.enableAnimations) {
-          root.style.transition = "all .3s ease";
+
+          root.style.opacity = "0";
+          root.style.transform = "translateY(10px)";
+
+          setTimeout(()=>{
+            root.style.transition = "all .35s ease";
+            root.style.opacity = "1";
+            root.style.transform = "translateY(0)";
+          },50);
+
         }
 
         if (offer.type === "bundle") {
@@ -115,8 +183,9 @@
       root.innerHTML = `
         <div class="smart-offer__title">🎁 ${offer.name || "Bundle & Save"}</div>
         <p class="smart-offer__desc">
-          Buy ${offer.minQuantity || 2}+ items and save ${offer.discountValue || 0}% automatically
+          Buy ${offer.minQuantity || 2}+ items and save ${offer.discountValue || 0}%
         </p>
+        ${settings.showBranding ? `<div class="smart-offer-brand">Powered by Oban Offers</div>` : ""}
       `;
     }
 

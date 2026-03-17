@@ -165,7 +165,7 @@ function Settings() {
                                         label="Show app branding"
                                         checked={settings.showBranding}
                                         onChange={(value) => handleChange('showBranding', value)}
-                                        helpText="Display 'Powered by Smart Offers' badge"
+                                        helpText="Display 'Powered by Oban All-in-one Offers' badge"
                                     />
 
                                     <Checkbox

@@ -11,13 +11,9 @@ const router = express.Router();
  * One single Shopify API instance (ONLY here).
  * Do NOT create another instance elsewhere.
  */
-const API_KEYS = [
-    process.env.VITE_SHOPIFY_API_KEY,
-    process.env.SHOPIFY_APP_KEY_TEST,
-];
 
 export const shopify = shopifyApi({
-    apiKey: API_KEYS[0], // default
+    apiKey: process.env.VITE_SHOPIFY_API_KEY,
     apiSecretKey: process.env.SHOPIFY_API_SECRET,
     scopes: (process.env.SHOPIFY_SCOPES || "")
         .split(",")
@@ -35,12 +31,6 @@ router.get("/auth", async (req, res) => {
     try {
         const shop = req.query.shop;
         if (!shop) return res.status(400).send("Missing shop param");
-
-        const clientId = req.query.client_id;
-
-        if (clientId && !API_KEYS.includes(clientId)) {
-            return res.status(401).send("Invalid client_id");
-        }
 
         await shopify.auth.begin({
             shop,
@@ -89,6 +79,15 @@ router.get("/auth/callback", async (req, res) => {
                                        updated_at = now()
             `,
             [session.shop, session.accessToken, session.scope || null]
+        );
+
+        await pool.query(
+            `
+              INSERT INTO shops (shop, plan)
+              VALUES ($1, 'grandfathered')
+              ON CONFLICT (shop) DO NOTHING
+            `,
+            [session.shop]
         );
 
         return res.redirect(

@@ -13,32 +13,32 @@ api_version = "2025-10"
   uri = "/api/webhooks/app/uninstalled"
 
   [[webhooks.subscriptions]]
-  topics = [ "products/delete" ]
-  uri = "/api/webhooks/products/delete"
-
-  [[webhooks.subscriptions]]
   topics = [ "products/update" ]
   uri = "/api/webhooks/products/update"
-
-  [[webhooks.subscriptions]]
-  compliance_topics = ["customers/data_request"]
-  uri = "/api/webhooks/customers/data_request"
-
-  [[webhooks.subscriptions]]
-  compliance_topics = ["customers/redact"]
-  uri = "/api/webhooks/customers/redact"
-
-  [[webhooks.subscriptions]]
-  compliance_topics = ["shop/redact"]
-  uri = "/api/webhooks/shop/redact"
 
   [[webhooks.subscriptions]]
   topics = [ "shop/update" ]
   uri = "/api/webhooks/shop/update"
 
+  [[webhooks.subscriptions]]
+  uri = "/api/webhooks/customers/data_request"
+  compliance_topics = [ "customers/data_request" ]
+
+  [[webhooks.subscriptions]]
+  uri = "/api/webhooks/customers/redact"
+  compliance_topics = [ "customers/redact" ]
+
+  [[webhooks.subscriptions]]
+  uri = "/api/webhooks/shop/redact"
+  compliance_topics = [ "shop/redact" ]
+
+  [[webhooks.subscriptions]]
+  topics = [ "products/delete" ]
+  uri = "/api/webhooks/products/delete"
+
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "read_products,write_products,read_discounts,write_discounts"
+scopes = "read_discounts,read_products,write_discounts,write_products"
 optional_scopes = [ ]
 use_legacy_install_flow = false
 
@@ -48,10 +48,10 @@ redirect_urls = [
   "https://all-in-one-promotions.onrender.com/auth/shopify/callback"
 ]
 
-[pos]
-embedded = false
-
 [app_proxy]
 url = "https://all-in-one-promotions.onrender.com"
 subpath = "promotions"
 prefix = "apps"
+
+[pos]
+embedded = false

@@ -8,7 +8,7 @@ import {
     Button,
     Text,
     BlockStack,
-    InlineStack, Banner
+    InlineStack
 } from '@shopify/polaris';
 import { useNavigate } from 'react-router-dom';
 import api from "../api/axios.js";
@@ -52,7 +52,7 @@ function Dashboard() {
     };
 
     const metricCards = [
-        { title: 'Total Offers', value: metrics?.totalOffers || 0 },
+        { title: 'Active Offers', value: metrics?.totalOffers || 0 },
         { title: 'Impressions', value: metrics?.totalImpressions || 0 },
         { title: 'Clicks', value: metrics?.totalClicks || 0 },
         { title: 'Conversions', value: metrics?.totalConversions || 0 },
@@ -82,17 +82,26 @@ function Dashboard() {
                 <Layout.Section>
                     <BlockStack gap="500">
 
+                        {/* Getting Started (only if no active offers) */}
                         {metrics?.totalOffers === 0 && (
-                            <Banner
-                                tone="info"
-                                title="Create your first offer"
-                                action={{
-                                    content: "Create Offer",
-                                    onAction: () => navigate('/offers/new')
-                                }}
-                            >
-                                Increase your store's average order value with quantity discounts.
-                            </Banner>
+                            <Card>
+                                <BlockStack gap="300">
+                                    <Text variant="headingLg" as="h2">
+                                        Getting Started
+                                    </Text>
+
+                                    <InlineStack align="space-between">
+                                        <Text>Create your first active offer</Text>
+                                        <Button
+                                            size="small"
+                                            variant="primary"
+                                            onClick={() => navigate('/offers')}
+                                        >
+                                            Manage Offers
+                                        </Button>
+                                    </InlineStack>
+                                </BlockStack>
+                            </Card>
                         )}
 
                         {/* Metrics */}
@@ -158,29 +167,6 @@ function Dashboard() {
                                         No offer data available yet. Create your first offer to start tracking performance.
                                     </Text>
                                 )}
-                            </BlockStack>
-                        </Card>
-
-                        {/* Getting Started */}
-                        <Card>
-                            <BlockStack gap="300">
-                                <Text variant="headingLg" as="h2">
-                                    Getting Started
-                                </Text>
-
-                                <InlineStack align="space-between">
-                                    <Text>Create your first offer</Text>
-                                    <Badge tone={metrics?.totalOffers > 0 ? 'success' : 'info'}>
-                                        {metrics?.totalOffers > 0 ? 'Complete' : 'Pending'}
-                                    </Badge>
-                                </InlineStack>
-
-                                <InlineStack align="space-between">
-                                    <Text>Activate your offer</Text>
-                                    <Badge tone={metrics?.totalConversions > 0 ? 'success' : 'info'}>
-                                        {metrics?.totalConversions > 0 ? 'Active' : 'Pending'}
-                                    </Badge>
-                                </InlineStack>
                             </BlockStack>
                         </Card>
 
