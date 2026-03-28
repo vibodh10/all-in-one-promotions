@@ -121,6 +121,11 @@
 
     }
 
+    let settings = {
+      enableAnimations: true,
+      showBranding: true
+    }
+
     fetch(`/apps/promotions/storefront/offers?productId=${encodeURIComponent(productGid)}&shop=${encodeURIComponent(shop)}`)
       .then(res => res.json())
       .then(data => {
@@ -134,10 +139,7 @@
           return;
         }
 
-        const settings = data?.settings || {
-          enableAnimations: true,
-          showBranding: true
-        };
+        settings = data?.settings || settings;
 
         const offer = data.offers[0];
 

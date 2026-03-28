@@ -110,9 +110,10 @@ router.post("/:id/duplicate", verifyRequest, async (req, res) => {
 
     const duplicatedOffer = {
       ...rest,
-      shopId,
+      shopId: shopId,
       name: `${original.name} (Copy)`,
       status: "draft",
+      discount_type: original.discount_type || original.type // ✅ FIX
     };
 
     const created = await database.createOffer(duplicatedOffer);
