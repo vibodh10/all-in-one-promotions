@@ -81,6 +81,57 @@ function OfferList() {
 
     };
 
+    const handleStatusChange = async (offerId, newStatus) => {
+        try {
+
+            await api.patch(`/offers/${offerId}/status`, {
+                status: newStatus
+            });
+
+            fetchOffers();
+
+        } catch (err) {
+
+            console.error("Error updating offer status:", err);
+
+            if (err.response && err.response.data) {
+                const backendMessage = err.response.data.error;
+
+                if (backendMessage) {
+                    if (backendMessage.includes("already exists")) {
+                        setError(
+                            "An active offer already exists for one or more of the selected products. Please pause it before activating this one."
+                        );
+                    } else {
+                        setError(backendMessage);
+                    }
+                    return;
+                }
+            }
+
+            setError("Unable to update offer status. Please try again.");
+        }
+    };
+
+    const handleDuplicate = async (offerId) => {
+        try {
+
+            await api.post(`/offers/${offerId}/duplicate`);
+
+            fetchOffers();
+
+        } catch (err) {
+
+            console.error("Error duplicating offer:", err);
+
+            if (err.response?.data?.error) {
+                setError(err.response.data.error);
+            } else {
+                setError("Failed to duplicate offer.");
+            }
+        }
+    };
+
     const getStatusBadge = (status) => {
 
         const statusMap = {
@@ -96,20 +147,63 @@ function OfferList() {
 
     };
 
+    const getOfferTypeLabel = (type) => {
+
+        const typeMap = {
+            quantity_break: 'Quantity Break',
+            bundle: 'Bundle & Save',
+            volume_discount: 'Volume Discount',
+            cross_sell: 'Cross-Sell',
+            cart_upsell: 'Cart Upsell'
+        };
+
+        return typeMap[type] || type;
+    };
+
     const rows = offers.map((offer) => [
 
         offer.name,
-        offer.type,
+        getOfferTypeLabel(offer.type),
         getStatusBadge(offer.status),
 
         <ButtonGroup>
+
             <Button size="slim" onClick={() => navigate(`/offers/${offer.id}/edit`)}>
                 Edit
             </Button>
 
-            <Button size="slim" destructive onClick={() => handleDelete(offer.id)}>
+            {offer.status === 'active' ? (
+                <Button
+                    size="slim"
+                    onClick={() => handleStatusChange(offer.id, 'paused')}
+                >
+                    Pause
+                </Button>
+            ) : (
+                <Button
+                    size="slim"
+                    primary
+                    onClick={() => handleStatusChange(offer.id, 'active')}
+                >
+                    Activate
+                </Button>
+            )}
+
+            <Button
+                size="slim"
+                onClick={() => handleDuplicate(offer.id)}
+            >
+                Duplicate
+            </Button>
+
+            <Button
+                size="slim"
+                destructive
+                onClick={() => handleDelete(offer.id)}
+            >
                 Delete
             </Button>
+
         </ButtonGroup>
 
     ]);
