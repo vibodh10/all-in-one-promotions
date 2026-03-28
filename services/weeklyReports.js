@@ -14,6 +14,8 @@ export async function sendWeeklyReports() {
 
     for (const shop of shops.rows) {
 
+        console.log("Processing shop:", shop);
+
         const stats = await pool.query(`
             SELECT
                 COUNT(*) FILTER (WHERE event_name='offer_view') AS impressions,
@@ -26,6 +28,8 @@ export async function sendWeeklyReports() {
         `, [shop.shop]);
 
         const data = stats.rows[0];
+
+        console.log("Stats:", data);
 
         const impressions = Number(data.impressions || 0);
         const clicks = Number(data.clicks || 0);
@@ -55,12 +59,14 @@ export async function sendWeeklyReports() {
       <p>View full analytics inside your Oban All-in-One Offers dashboard.</p>
     `;
 
-        await resend.emails.send({
-            from: "ghimab@gmail.com",
+        const result = await resend.emails.send({
+            from: "onboarding@resend.dev",
             to: shop.email,
             subject: "Your Weekly Offer Performance Report",
             html
         });
+
+        console.log("EMAIL RESULT:", result);
 
     }
 
