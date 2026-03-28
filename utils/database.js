@@ -195,23 +195,39 @@ async function saveAnalyticsEvent(event) {
 
 /** Get analytics events */
 async function getAnalyticsEvents(filters = {}) {
-    if (USE_FIREBASE) {
-        let query = pool.collection('analytics_events').where('shopId', '==', filters.shopId);
-        if (filters.offerId) query = query.where('offerId', '==', filters.offerId);
-        if (filters.startDate) query = query.where('timestamp', '>=', filters.startDate);
-        if (filters.endDate) query = query.where('timestamp', '<=', filters.endDate);
-        const snapshot = await query.get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } else {
-        let query = 'SELECT * FROM analytics_events WHERE shop_id = $1';
-        const params = [filters.shopId];
-        let paramIndex = 2;
-        if (filters.offerId) { query += ` AND offer_id = $${paramIndex}`; params.push(filters.offerId); paramIndex++; }
-        if (filters.startDate) { query += ` AND timestamp >= $${paramIndex}`; params.push(filters.startDate); paramIndex++; }
-        if (filters.endDate) { query += ` AND timestamp <= $${paramIndex}`; params.push(filters.endDate); }
-        const result = await pool.query(query, params);
-        return result.rows;
+    let query = 'SELECT * FROM analytics_events WHERE shop_id = $1';
+    const params = [filters.shopId];
+    let paramIndex = 2;
+
+    if (filters.offerId) {
+        query += ` AND offer_id = $${paramIndex}`;
+        params.push(filters.offerId);
+        paramIndex++;
     }
+
+    if (filters.startDate) {
+        query += ` AND timestamp >= $${paramIndex}`;
+        params.push(filters.startDate);
+        paramIndex++;
+    }
+
+    if (filters.endDate) {
+        query += ` AND timestamp <= $${paramIndex}`;
+        params.push(filters.endDate);
+    }
+
+    const result = await pool.query(query, params);
+
+    // 🔥 FIX: map DB → app format
+    return result.rows.map(row => ({
+        eventName: row.event_name,
+        offerId: row.offer_id,
+        productId: row.product_id,
+        cartValue: row.cart_value,
+        currency: row.currency,
+        metadata: row.metadata,
+        timestamp: row.timestamp
+    }));
 }
 
 /** Get subscription */

@@ -41,7 +41,7 @@ function Dashboard() {
         } finally {
             setLoading(false);
 
-            // slight delay so skeleton doesn't snap away instantly
+            // slight delay so the skeleton doesn't snap away instantly
             setTimeout(() => {
                 setShowContent(true);
             }, 150);

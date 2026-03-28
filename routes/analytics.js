@@ -224,7 +224,7 @@ router.get('/dashboard', async (req, res) => {
     // Sort by revenue and get top 5
     metrics.topPerformingOffers = Object.entries(offerPerformance)
       .map(([offerId, stats]) => {
-        const offer = offers.find(o => o.id === offerId);
+        const offer = offers.find(o => String(o.id) === offerId);
         return {
           offerId,
           offerName: offer?.name || 'Unknown',
