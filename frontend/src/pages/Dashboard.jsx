@@ -8,7 +8,9 @@ import {
     Button,
     Text,
     BlockStack,
-    InlineStack
+    InlineStack,
+    SkeletonDisplayText,
+    SkeletonBodyText
 } from '@shopify/polaris';
 import { useNavigate } from 'react-router-dom';
 import api from "../api/axios.js";
@@ -18,6 +20,7 @@ function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [metrics, setMetrics] = useState(null);
     const [topOffers, setTopOffers] = useState([]);
+    const [showContent, setShowContent] = useState(false);
 
     useEffect(() => {
         fetchDashboardData();
@@ -37,6 +40,11 @@ function Dashboard() {
             console.error('Error fetching dashboard data:', error);
         } finally {
             setLoading(false);
+
+            // slight delay so skeleton doesn't snap away instantly
+            setTimeout(() => {
+                setShowContent(true);
+            }, 150);
         }
     };
 
@@ -80,97 +88,151 @@ function Dashboard() {
         >
             <Layout>
                 <Layout.Section>
-                    <BlockStack gap="500">
+                    {loading ? (
+                        <BlockStack gap="500">
 
-                        {/* Getting Started (only if no active offers) */}
-                        {metrics?.totalOffers === 0 && (
+                            {/* Skeleton Getting Started */}
                             <Card>
                                 <BlockStack gap="300">
-                                    <Text variant="headingLg" as="h2">
-                                        Getting Started
-                                    </Text>
-
-                                    <InlineStack align="space-between">
-                                        <Text>Create your first active offer</Text>
-                                        <Button
-                                            size="small"
-                                            variant="primary"
-                                            onClick={() => navigate('/offers')}
-                                        >
-                                            Manage Offers
-                                        </Button>
-                                    </InlineStack>
+                                    <SkeletonDisplayText size="medium" />
+                                    <SkeletonBodyText lines={2} />
                                 </BlockStack>
                             </Card>
-                        )}
 
-                        {/* Metrics */}
-                        <InlineStack gap="400" wrap>
-                            {metricCards.map((metric, index) => (
-                                <div key={index} style={{ flex: '1 1 200px', minWidth: '200px' }}>
+                            {/* Skeleton Metrics */}
+                            <InlineStack gap="400" wrap>
+                                {[...Array(6)].map((_, i) => (
+                                    <div key={i} style={{ flex: '1 1 200px', minWidth: '200px' }}>
+                                        <Card>
+                                            <BlockStack gap="200">
+                                                <SkeletonBodyText lines={1} />
+                                                <SkeletonDisplayText size="large" />
+                                            </BlockStack>
+                                        </Card>
+                                    </div>
+                                ))}
+                            </InlineStack>
+
+                            {/* Skeleton Navigation */}
+                            <Card>
+                                <BlockStack gap="300">
+                                    <SkeletonDisplayText size="medium" />
+                                    <SkeletonBodyText lines={2} />
+                                </BlockStack>
+                            </Card>
+
+                            {/* Skeleton Table */}
+                            <Card>
+                                <BlockStack gap="300">
+                                    <SkeletonDisplayText size="medium" />
+                                    <SkeletonBodyText lines={4} />
+                                </BlockStack>
+                            </Card>
+
+                        </BlockStack>
+                    ) : (
+                        <div
+                            style={{
+                                opacity: showContent ? 1 : 0,
+                                transform: showContent ? 'translateY(0px)' : 'translateY(8px)',
+                                transition: 'all 0.3s ease'
+                            }}
+                        >
+                            <BlockStack gap="500">
+
+                            {/* Getting Started */}
+                            {metrics?.totalOffers === 0 && (
                                     <Card>
-                                        <BlockStack gap="200">
-                                            <Text variant="bodyMd" as="p" tone="subdued">
-                                                {metric.title}
+                                        <BlockStack gap="300">
+                                            <Text variant="headingLg" as="h2">
+                                                Getting Started
                                             </Text>
-                                            <Text variant="heading2xl" as="h3">
-                                                {metric.value}
-                                            </Text>
+
+                                            <InlineStack align="space-between">
+                                                <Text>
+                                                    Create your first active offer to display discounts on your product pages
+                                                </Text>
+                                                <Button
+                                                    size="small"
+                                                    variant="primary"
+                                                    onClick={() => navigate('/offers')}
+                                                >
+                                                    Manage Offers
+                                                </Button>
+                                            </InlineStack>
                                         </BlockStack>
                                     </Card>
-                                </div>
-                            ))}
-                        </InlineStack>
-
-                        {/* Navigation Section */}
-                        <Card>
-                            <BlockStack gap="400">
-                                <Text variant="headingLg" as="h2">
-                                    Manage Your App
-                                </Text>
-
-                                <InlineStack gap="300" wrap>
-                                    <Button onClick={() => navigate('/offers')} size="large">
-                                        Manage Offers
-                                    </Button>
-
-                                    <Button onClick={() => navigate('/offers/new')} size="large">
-                                        Create Offer
-                                    </Button>
-
-                                    <Button onClick={() => navigate('/analytics')} size="large">
-                                        View Analytics
-                                    </Button>
-
-                                    <Button onClick={() => navigate('/settings')} size="large">
-                                        App Settings
-                                    </Button>
-                                </InlineStack>
-                            </BlockStack>
-                        </Card>
-
-                        {/* Top Offers */}
-                        <Card>
-                            <BlockStack gap="400">
-                                <Text variant="headingLg" as="h2">
-                                    Top Performing Offers (Last 30 Days)
-                                </Text>
-
-                                {topOffers.length > 0 ? (
-                                    <DataTable
-                                        columnContentTypes={['text', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric']}
-                                        headings={['Offer Name', 'Impressions', 'Clicks', 'Conversions', 'Revenue', 'Conv. Rate']}
-                                        rows={offerRows}
-                                    />
-                                ) : (
-                                    <Text variant="bodyMd" as="p" tone="subdued">
-                                        No offer data available yet. Create your first offer to start tracking performance.
-                                    </Text>
                                 )}
-                            </BlockStack>
-                        </Card>
 
-                    </BlockStack>
+                                {/* Metrics */}
+                                <InlineStack gap="400" wrap>
+                                    {metricCards.map((metric, index) => (
+                                        <div key={index} style={{ flex: '1 1 200px', minWidth: '200px' }}>
+                                            <Card>
+                                                <BlockStack gap="200">
+                                                    <Text variant="bodyMd" as="p" tone="subdued">
+                                                        {metric.title}
+                                                    </Text>
+                                                    <Text variant="heading2xl" as="h3">
+                                                        {metric.value}
+                                                    </Text>
+                                                </BlockStack>
+                                            </Card>
+                                        </div>
+                                    ))}
+                                </InlineStack>
+
+                                {/* Navigation Section */}
+                                <Card>
+                                    <BlockStack gap="400">
+                                        <Text variant="headingLg" as="h2">
+                                            Manage Your App
+                                        </Text>
+
+                                        <InlineStack gap="300" wrap>
+                                            <Button onClick={() => navigate('/offers')} size="large">
+                                                Manage Offers
+                                            </Button>
+
+                                            <Button onClick={() => navigate('/offers/new')} size="large">
+                                                Create Offer
+                                            </Button>
+
+                                            <Button onClick={() => navigate('/analytics')} size="large">
+                                                View Analytics
+                                            </Button>
+
+                                            <Button onClick={() => navigate('/settings')} size="large">
+                                                App Settings
+                                            </Button>
+                                        </InlineStack>
+                                    </BlockStack>
+                                </Card>
+
+                                {/* Top Offers */}
+                                <Card>
+                                    <BlockStack gap="400">
+                                        <Text variant="headingLg" as="h2">
+                                            Top Performing Offers (Last 30 Days)
+                                        </Text>
+
+                                        {topOffers.length > 0 ? (
+                                            <DataTable
+                                                columnContentTypes={['text', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric']}
+                                                headings={['Offer Name', 'Impressions', 'Clicks', 'Conversions', 'Revenue', 'Conv. Rate']}
+                                                rows={offerRows}
+                                            />
+                                        ) : (
+                                            <Text variant="bodyMd" as="p" tone="subdued">
+                                                No offer data available yet. Create your first offer to start tracking performance.
+                                            </Text>
+                                        )}
+                                    </BlockStack>
+                                </Card>
+
+                            </BlockStack>
+                        </div>
+                    )}
                 </Layout.Section>
             </Layout>
         </Page>

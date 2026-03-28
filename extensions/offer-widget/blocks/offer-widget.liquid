@@ -78,6 +78,16 @@
     opacity:.55;
     text-align:right;
   }
+
+  .smart-offer__empty{
+    border:1px dashed rgba(0,0,0,.15);
+    border-radius:12px;
+    padding:16px;
+    text-align:center;
+    font-size:14px;
+    opacity:.65;
+    background:rgba(0,0,0,.02);
+  }
   </style>
 
   <script>
@@ -116,7 +126,11 @@
       .then(data => {
 
         if (!data || !data.offers || !data.offers.length) {
-          root.innerHTML = "";
+         root.innerHTML = `
+           <div class="smart-offer__empty">
+             No active offer yet.
+           </div>
+         `;
           return;
         }
 

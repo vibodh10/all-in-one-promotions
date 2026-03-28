@@ -12,18 +12,30 @@ import {
   disableDiscount,
 } from "../utils/shopifyFunctions.js";
 import pool from "../utils/db.js";
-import {camelize} from "../utils/camelize.js";
-import {sendEmail} from "../utils/email.js";
+import { camelize } from "../utils/camelize.js";
+import { sendEmail } from "../utils/email.js";
 
-async function getShopSettings(shop) {
-
+/* ================================
+   TOKEN HELPER (CRITICAL FIX)
+================================ */
+async function getAccessToken(shop) {
   const result = await pool.query(
-      `SELECT contact_email, email_notifications, weekly_reports
-         FROM shop_settings
-         WHERE shop_id = $1`,
+      "SELECT access_token FROM shop_tokens WHERE shop = $1",
       [shop]
   );
+  return result.rows[0]?.access_token;
+}
 
+/* ================================
+   SETTINGS
+================================ */
+async function getShopSettings(shop) {
+  const result = await pool.query(
+      `SELECT contact_email, email_notifications, weekly_reports
+     FROM shop_settings
+     WHERE shop_id = $1`,
+      [shop]
+  );
   return result.rows[0];
 }
 
@@ -31,7 +43,6 @@ async function getShopSettings(shop) {
    STOREFRONT (App Proxy)
 ====================================================== */
 router.get("/offers", async (req, res) => {
-
   const { productId, shop } = req.query;
 
   if (!productId || !shop) {
@@ -39,30 +50,22 @@ router.get("/offers", async (req, res) => {
   }
 
   try {
-
     const offers = await database.getOffersByProduct(productId, shop);
 
     const settingsResult = await pool.query(
-        `
-      SELECT show_branding, enable_animations
-      FROM shop_settings
-      WHERE shop_id = $1
-      `,
+        `SELECT show_branding, enable_animations
+         FROM shop_settings
+         WHERE shop_id = $1`,
         [shop]
     );
 
     const settings = settingsResult.rows[0] || {};
 
-    res.json({
-      offers,
-      settings
-    });
-
+    res.json({ offers, settings });
   } catch (err) {
     console.error("Error fetching offers:", err);
     res.status(500).json({ error: "Failed to load offers" });
   }
-
 });
 
 /* ======================================================
@@ -93,42 +96,28 @@ router.get("/", verifyRequest, async (req, res) => {
 /* ======================================================
    DUPLICATE OFFER
 ====================================================== */
-router.post("/:id/duplicate", async (req, res) => {
+router.post("/:id/duplicate", verifyRequest, async (req, res) => {
   try {
     const { id } = req.params;
     const shopId = req.shop;
 
     const original = await database.getOfferById(id, shopId);
-
     if (!original) {
       return res.status(404).json({ error: "Offer not found" });
     }
 
-    const {
-      id: _id,
-      created_at,
-      updated_at,
-      impressions,
-      clicks,
-      conversions,
-      revenue,
-      ...rest
-    } = original;
+    const { id: _id, created_at, updated_at, impressions, clicks, conversions, revenue, ...rest } = original;
 
     const duplicatedOffer = {
       ...rest,
-      shopId: shopId, // ✅ IMPORTANT
+      shopId,
       name: `${original.name} (Copy)`,
-      status: "draft"
+      status: "draft",
     };
 
     const created = await database.createOffer(duplicatedOffer);
 
-    res.json({
-      success: true,
-      data: created
-    });
-
+    res.json({ success: true, data: created });
   } catch (err) {
     console.error("Duplicate offer error:", err);
     res.status(500).json({ error: "Failed to duplicate offer" });
@@ -160,28 +149,24 @@ router.get("/:id", verifyRequest, async (req, res) => {
 ====================================================== */
 router.post("/", verifyRequest, async (req, res) => {
   try {
-    const shopId = req.shop;
+    const shop = req.shop;
+    const accessToken = await getAccessToken(shop);
 
-    const offer = new Offer({
-      ...req.body,
-      shopId,
-    });
+    if (!accessToken) {
+      return res.status(401).json({ error: "Shop not authenticated" });
+    }
+
+    const offer = new Offer({ ...req.body, shopId: shop });
 
     const validation = offer.validate();
     if (!validation.isValid) {
-      return res.status(400).json({
-        error: validation.errors.join(", "),
-      });
+      return res.status(400).json({ error: validation.errors.join(", ") });
     }
 
     const created = await database.createOffer(offer.toJSON());
 
-    // If active → create Shopify automatic discount
     if (created.status === "active") {
-      const result = await createDiscount(
-          { shop: req.shop, accessToken: req.accessToken },
-          created
-      );
+      const result = await createDiscount({ shop, accessToken }, created);
 
       await database.updateOffer(created.id, {
         shopify_discount_ids: result.automaticDiscountIds,
@@ -190,21 +175,16 @@ router.post("/", verifyRequest, async (req, res) => {
       const settings = await getShopSettings(shop);
 
       if (settings?.email_notifications && settings?.contact_email) {
-
         await sendEmail(
             settings.contact_email,
             "Your offer is now live",
-            `
-            <h2>Your offer is now active</h2>
-            <p>The offer <strong>${offer.name}</strong> is now running in your store.</p>
-            `
+            `<h2>Your offer is now active</h2>
+           <p>The offer <strong>${offer.name}</strong> is now running in your store.</p>`
         );
-
       }
     }
 
-    const refreshed = await database.getOfferById(created.id, shopId);
-
+    const refreshed = await database.getOfferById(created.id, shop);
     res.status(201).json({ success: true, data: refreshed });
 
   } catch (error) {
@@ -219,120 +199,23 @@ router.post("/", verifyRequest, async (req, res) => {
 router.put("/:id", verifyRequest, async (req, res) => {
   try {
     const { id } = req.params;
-    const shopId = req.shop;
+    const shop = req.shop;
+    const accessToken = await getAccessToken(shop);
 
-    const existing = await database.getOfferById(id, shopId);
-    if (!existing) {
-      return res.status(404).json({ error: "Offer not found" });
-    }
+    const existing = await database.getOfferById(id, shop);
+    if (!existing) return res.status(404).json({ error: "Offer not found" });
 
-    const updatedOffer = new Offer({
-      ...req.body,
-      shopId,
-      id,
-    });
+    const saved = await database.updateOffer(id, req.body);
 
-    const validation = updatedOffer.validate();
-    if (!validation.isValid) {
-      return res.status(400).json({
-        error: validation.errors.join(", "),
-      });
-    }
-
-    const cleanData = {
-      ...req.body,
-      discount_value: Number(req.body.discountValue ?? req.body.discount_value ?? 0),
-
-      bundle_config: req.body.bundleConfig || {},
-      display_settings: req.body.displaySettings || {},
-      styling: req.body.styling || {}
-    };
-
-    Object.keys(cleanData).forEach(k => {
-      if (cleanData[k] === undefined) delete cleanData[k];
-    });
-
-    // 1️⃣ Save updated offer fields first
-    const saved = await database.updateOffer(id, cleanData);
-
-    /* ---------- ACTIVE ---------- */
     if (saved.status === "active") {
+      const result = await updateDiscount({ shop, accessToken }, saved);
 
-      let result;
-
-      const hasDiscount =
-          Array.isArray(saved.shopify_discount_ids) &&
-          saved.shopify_discount_ids.length > 0;
-
-      if (hasDiscount) {
-        // 🔁 UPDATE = delete + recreate (your architecture)
-        result = await updateDiscount(
-            { shop: req.shop, accessToken: req.accessToken },
-            saved
-        );
-      } else {
-        // 🆕 CREATE fresh
-        result = await createDiscount(
-            { shop: req.shop, accessToken: req.accessToken },
-            saved
-        );
-      }
-
-      // ✅ ALWAYS overwrite DB with fresh IDs
       await database.updateOffer(id, {
         shopify_discount_ids: result.automaticDiscountIds,
       });
-
-      const settings = await getShopSettings(shop);
-
-      if (settings?.email_notifications && settings?.contact_email) {
-
-        await sendEmail(
-            settings.contact_email,
-            "Your offer is now live",
-            `
-            <h2>Your offer is now active</h2>
-            <p>The offer <strong>${cleanData.name}</strong> is now running in your store.</p>
-            `
-        );
-
-      }
     }
 
-    /* ---------- NOT ACTIVE ---------- */
-    if (
-        saved.status !== "active" &&
-        Array.isArray(saved.shopify_discount_ids) &&
-        saved.shopify_discount_ids.length > 0
-    ) {
-      await disableDiscount(
-          { shop: req.shop, accessToken: req.accessToken },
-          saved.shopify_discount_ids
-      );
-
-      // 🔥 Clear IDs in DB to prevent stale delete later
-      await database.updateOffer(id, {
-        shopify_discount_ids: [],
-      });
-
-      const settings = await getShopSettings(shop);
-
-      if (settings?.email_notifications && settings?.contact_email) {
-
-        await sendEmail(
-            settings.contact_email,
-            "Offer ended",
-            `
-            <h2>Your offer has ended</h2>
-            <p>The offer <strong>${cleanData.name}</strong> has finished running.</p>
-            `
-        );
-
-      }
-    }
-
-    const refreshed = await database.getOfferById(id, shopId);
-
+    const refreshed = await database.getOfferById(id, shop);
     res.json({ success: true, data: refreshed });
 
   } catch (error) {
@@ -342,76 +225,33 @@ router.put("/:id", verifyRequest, async (req, res) => {
 });
 
 /* ======================================================
-   PATCH STATUS
+   STATUS
 ====================================================== */
 router.patch("/:id/status", verifyRequest, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    const shopId = req.shop;
+    const shop = req.shop;
+    const accessToken = await getAccessToken(shop);
 
-    if (!["active", "paused", "draft"].includes(status)) {
-      return res.status(400).json({ error: "Invalid status" });
-    }
+    const offer = await database.getOfferById(id, shop);
+    if (!offer) return res.status(404).json({ error: "Offer not found" });
 
-    const offer = await database.getOfferById(id, shopId);
-    if (!offer) {
-      return res.status(404).json({ error: "Offer not found" });
-    }
-
-    /* Duplicate protection */
     if (status === "active") {
-      const productIds = offer.products || [];
-
-      for (const productId of productIds) {
-        const conflicts = await pool.query(
-            `
-              SELECT id FROM offers
-              WHERE shop_id = $1
-                AND status = 'active'
-                AND id != $2
-                AND products @> $3::jsonb
-            `,
-            [shopId, id, JSON.stringify([productId])]
-        );
-
-        if (conflicts.rows.length > 0) {
-          return res.status(400).json({
-            error: "Another active offer exists for this product.",
-          });
-        }
-      }
-    }
-
-    /* ACTIVATE */
-    if (status === "active") {
-      const result = await createDiscount(
-          { shop: req.shop, accessToken: req.accessToken },
-          offer
-      );
+      const result = await createDiscount({ shop, accessToken }, offer);
 
       await database.updateOffer(id, {
-        status: "active",
+        status,
         shopify_discount_ids: result.automaticDiscountIds,
       });
     }
 
-    /* PAUSE */
-    if (status === "paused" && offer.shopify_discount_ids?.length) {
-      await disableDiscount(
-          { shop: req.shop, accessToken: req.accessToken },
-          offer.shopify_discount_ids
-      );
-      await database.updateOffer(id, { status: "paused" });
+    if (status === "paused") {
+      await disableDiscount({ shop, accessToken }, offer.shopify_discount_ids);
+      await database.updateOffer(id, { status });
     }
 
-    /* DRAFT */
-    if (status === "draft") {
-      await database.updateOffer(id, { status: "draft" });
-    }
-
-    const updated = await database.getOfferById(id, shopId);
-
+    const updated = await database.getOfferById(id, shop);
     res.json({ success: true, data: updated });
 
   } catch (err) {
@@ -421,26 +261,23 @@ router.patch("/:id/status", verifyRequest, async (req, res) => {
 });
 
 /* ======================================================
-   DELETE OFFER
+   DELETE
 ====================================================== */
 router.delete("/:id", verifyRequest, async (req, res) => {
   try {
     const { id } = req.params;
-    const shopId = req.shop;
+    const shop = req.shop;
+    const accessToken = await getAccessToken(shop);
 
-    const offer = await database.getOfferById(id, shopId);
+    const offer = await database.getOfferById(id, shop);
 
     if (offer?.shopify_discount_ids?.length) {
-      await deleteDiscount(
-          { shop: req.shop, accessToken: req.accessToken },
-          offer.shopify_discount_ids
-      );
+      await deleteDiscount({ shop, accessToken }, offer.shopify_discount_ids);
     }
 
-    await database.deleteOffer(id, shopId);
+    await database.deleteOffer(id, shop);
 
     res.json({ success: true });
-
   } catch (err) {
     console.error("Delete offer error:", err);
     res.status(500).json({ error: "Failed to delete offer" });
