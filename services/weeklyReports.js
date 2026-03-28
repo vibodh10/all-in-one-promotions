@@ -5,7 +5,12 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function sendWeeklyReports() {
 
-    const shops = await pool.query("SELECT shop, email FROM shop_tokens");
+    const shops = await pool.query(`
+  SELECT shop_id AS shop, contact_email AS email
+  FROM shop_settings
+  WHERE weekly_reports = true
+    AND contact_email IS NOT NULL
+`);
 
     for (const shop of shops.rows) {
 
@@ -51,7 +56,7 @@ export async function sendWeeklyReports() {
     `;
 
         await resend.emails.send({
-            from: "reports@yourdomain.com",
+            from: "ghimab@gmail.com",
             to: shop.email,
             subject: "Your Weekly Offer Performance Report",
             html
