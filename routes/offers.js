@@ -244,6 +244,29 @@ router.patch("/:id/status", verifyRequest, async (req, res) => {
     const offer = await database.getOfferById(id, shop);
     if (!offer) return res.status(404).json({ error: "Offer not found" });
 
+    /* 🚨 ADD THIS BLOCK */
+    if (status === "active") {
+
+      const activeOffers = await database.getOffers({
+        shopId: shop,
+        status: "active"
+      });
+
+      const hasConflict = activeOffers.some(o =>
+          o.id !== id &&
+          o.products?.some(p =>
+              offer.products?.includes(p)
+          )
+      );
+
+      if (hasConflict) {
+        return res.status(400).json({
+          error: "Another active offer exists for this product."
+        });
+      }
+    }
+
+    /* ✅ EXISTING LOGIC */
     if (status === "active") {
       const result = await createDiscount({ shop, accessToken }, offer);
 
