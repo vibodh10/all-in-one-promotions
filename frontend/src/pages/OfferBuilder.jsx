@@ -14,7 +14,7 @@ import {
     ResourceList,
     ResourceItem,
     Banner,
-    Thumbnail,
+    Thumbnail, EmptyState,
 } from "@shopify/polaris";
 import { ResourcePicker } from "@shopify/app-bridge/actions";
 import { useNavigate } from "react-router-dom";
