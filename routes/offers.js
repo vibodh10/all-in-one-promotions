@@ -114,9 +114,9 @@ router.post("/:id/duplicate", verifyRequest, async (req, res) => {
       name: `${original.name} (Copy)`,
       status: "draft",
 
-      // ✅ CRITICAL FIELDS
       type: original.type,
-      discount_value: original.discount_value ?? original.discountValue ?? 0
+      discountType: original.discountType || original.type,
+      discountValue: original.discountValue ?? original.discount_value ?? 0
     };
 
     const created = await database.createOffer(duplicatedOffer);
