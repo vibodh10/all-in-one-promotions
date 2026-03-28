@@ -149,6 +149,9 @@ router.get("/:id", verifyRequest, async (req, res) => {
 ====================================================== */
 router.post("/", verifyRequest, async (req, res) => {
   try {
+    console.log("SHOP:", shop);
+    console.log("TOKEN FROM DB:", accessToken);
+
     const shop = req.shop;
     const accessToken = await getAccessToken(shop);
 
