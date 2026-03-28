@@ -149,11 +149,11 @@ router.get("/:id", verifyRequest, async (req, res) => {
 ====================================================== */
 router.post("/", verifyRequest, async (req, res) => {
   try {
-    console.log("SHOP:", shop);
-    console.log("TOKEN FROM DB:", accessToken);
-
     const shop = req.shop;
     const accessToken = await getAccessToken(shop);
+
+    console.log("SHOP:", shop);
+    console.log("TOKEN FROM DB:", accessToken);
 
     if (!accessToken) {
       return res.status(401).json({ error: "Shop not authenticated" });
