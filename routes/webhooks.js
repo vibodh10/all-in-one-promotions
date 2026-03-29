@@ -33,17 +33,21 @@ function verifyWebhook(req, res, next) {
  */
 router.post("/app/uninstalled", verifyWebhook, async (req, res) => {
     try {
-        const payload = JSON.parse(req.body.toString("utf8"));
-        const shop = payload.shop_domain;
+        const shop = req.get("X-Shopify-Shop-Domain");
 
         console.log("🧹 APP_UNINSTALLED for:", shop);
 
+        if (!shop) {
+            console.error("❌ No shop domain in webhook");
+            return res.status(400).send("Missing shop");
+        }
+
         await pool.query(
             `
-            UPDATE shop_tokens
-            SET access_token = null,
-                updated_at = now()
-            WHERE shop = $1
+                UPDATE shop_tokens
+                SET access_token = null,
+                    updated_at = now()
+                WHERE shop = $1
             `,
             [shop]
         );
