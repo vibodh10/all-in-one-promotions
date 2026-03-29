@@ -1,27 +1,39 @@
-import {verifyRequest} from "../middleware/auth.js";
 import express from "express";
 import pool from "../utils/db.js";
 
 const router = express.Router();
 
 router.get("/", async (req, res) => {
+    try {
+        const shop = req.shop;
 
-    const shop = req.shop;
+        const result = await pool.query(
+            `SELECT *
+             FROM shop_settings
+             WHERE shop_id = $1`,
+            [shop]
+        );
 
-    const result = await pool.query(
-        `SELECT *
-         FROM shop_settings
-         WHERE shop_id = $1`,
-        [shop]
-    );
+        if (!result.rows.length) {
+            return res.json({});
+        }
 
-    if (!result.rows.length) {
-        return res.json({});
+        const row = result.rows[0];
+
+        // ✅ map DB → frontend format
+        res.json({
+            contactEmail: row.contact_email,
+            showBranding: row.show_branding,
+            enableAnimations: row.enable_animations,
+            emailNotifications: row.email_notifications,
+            weeklyReports: row.weekly_reports
+        });
+
+    } catch (err) {
+        console.error("Error fetching settings:", err);
+        res.status(500).json({ error: "Failed to fetch settings" });
     }
-
-    res.json(result.rows[0]);
 });
-
 
 router.post("/", async (req, res) => {
 
