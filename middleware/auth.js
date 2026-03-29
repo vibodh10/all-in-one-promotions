@@ -106,17 +106,20 @@ router.get("/auth/callback", async (req, res) => {
  */
 export async function verifyRequest(req, res, next) {
     try {
-        console.log("FULL QUERY OBJECT:", req.query);
-        const shop = req.query.shop;
 
-        console.log("VERIFY SHOP VALUE:", shop);
+        let shop =
+            req.query.shop ||
+            req.headers['x-shopify-shop-domain'];
+
+        if (!shop) {
+            return res.status(401).json({
+                error: "Shop not provided"
+            });
+        }
 
         const shopRecord = await database.getShopByDomain(shop);
 
-        console.log("DB RESULT:", shopRecord);
-
         if (!shopRecord || !shopRecord.access_token) {
-            console.log("❌ No token stored in DB");
             return res.status(401).json({
                 error: "Unauthorized (no token stored). Reinstall app."
             });
@@ -125,9 +128,8 @@ export async function verifyRequest(req, res, next) {
         req.shop = shop;
         req.accessToken = shopRecord.access_token;
 
-        console.log("VERIFY CHECK -> shop:", shop, "hasToken:", true);
-
         next();
+
     } catch (error) {
         console.error("Verify error:", error);
         res.status(401).json({ error: "Unauthorized" });
