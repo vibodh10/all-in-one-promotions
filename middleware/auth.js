@@ -24,6 +24,30 @@ export const shopify = shopifyApi({
     isEmbeddedApp: true,
 });
 
+async function registerWebhooks(session) {
+    const client = new shopify.clients.Rest({ session });
+
+    try {
+        console.log("🔁 Registering webhooks for:", session.shop);
+
+        await client.post({
+            path: "webhooks",
+            data: {
+                webhook: {
+                    topic: "app/uninstalled",
+                    address: `${process.env.HOST}/api/webhooks/app/uninstalled`,
+                    format: "json",
+                },
+            },
+        });
+
+        console.log("✅ Webhook registered: APP_UNINSTALLED");
+
+    } catch (err) {
+        console.error("❌ Webhook registration failed:", err?.response?.body || err);
+    }
+}
+
 /**
  * Start OAuth
  */
@@ -90,6 +114,9 @@ router.get("/auth/callback", async (req, res) => {
             [session.shop]
         );
 
+        // AFTER saving token
+        await registerWebhooks(session);
+
         return res.redirect(
             `/frontend/?shop=${encodeURIComponent(session.shop)}&host=${encodeURIComponent(host)}`
         );
@@ -106,60 +133,28 @@ router.get("/auth/callback", async (req, res) => {
  */
 export async function verifyRequest(req, res, next) {
     try {
-
-        let shop =
+        const shop =
             req.query.shop ||
-            req.headers['x-shopify-shop-domain'];
+            req.headers["x-shopify-shop-domain"];
 
         if (!shop) {
-            return res.status(401).json({
-                error: "Shop not provided"
-            });
+            return res.status(401).send("Missing shop");
         }
 
         const shopRecord = await database.getShopByDomain(shop);
 
         if (!shopRecord || !shopRecord.access_token) {
-            return res.status(401).json({
-                error: "Unauthorized (no token stored). Reinstall app."
-            });
+            console.log("⚠️ No token found, redirecting to auth:", shop);
+            return res.redirect(`/auth?shop=${encodeURIComponent(shop)}`);
         }
 
         req.shop = shop;
         req.accessToken = shopRecord.access_token;
 
         next();
-
     } catch (error) {
         console.error("Verify error:", error);
-        res.status(401).json({ error: "Unauthorized" });
-    }
-}
-
-/**
- * Webhook verification (HMAC)
- * NOTE: This expects raw body on req.body (Buffer) for webhooks route.
- */
-export async function verifyWebhook(req, res, next) {
-    try {
-        const hmac = req.get("X-Shopify-Hmac-Sha256");
-        if (!hmac) return res.status(401).send("Missing HMAC");
-
-        const crypto = await import("crypto");
-        const generated = crypto
-            .createHmac("sha256", process.env.SHOPIFY_API_SECRET)
-            .update(req.body) // raw Buffer
-            .digest("base64");
-
-        if (generated !== hmac) {
-            console.warn("❌ Webhook HMAC failed");
-            return res.status(401).send("Invalid webhook");
-        }
-
-        next();
-    } catch (err) {
-        console.error("Webhook verification error:", err);
-        res.status(401).send("Invalid webhook");
+        res.status(500).send("Auth error");
     }
 }
 

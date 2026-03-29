@@ -22,6 +22,9 @@ import storefrontAnalytics from "./routes/storefrontAnalytics.js";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ✅ Webhooks: IMPORTANT — needs RAW body, so mount with express.raw
+app.use("/api/webhooks", express.raw({ type: "*/*" }), webhookRoutes);
+
 // ✅ Body parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -61,7 +64,7 @@ app.get("/health", (req, res) => {
 });
 
 // ✅ Auth routes
-app.use(authRouter);
+app.use("/", authRouter);
 
 // ✅ API routes (must include verifyRequest)
 app.use("/api/store", verifyRequest, storeRoutes);
@@ -73,8 +76,6 @@ app.use("/api/settings", verifyRequest, settingsRoutes);
 app.use("/cron", cronRoutes);
 app.use("/storefront/analytics", storefrontAnalytics);
 
-// ✅ Webhooks: IMPORTANT — needs RAW body, so mount with express.raw
-app.use("/api/webhooks", express.raw({ type: "application/json" }), webhookRoutes);
 
 // ✅ Frontend serving
 const __filename = fileURLToPath(import.meta.url);
@@ -110,9 +111,13 @@ app.get("/", async (req, res) => {
             [shop]
         );
 
-        const hasToken = result.rows.length > 0;
+        const hasValidToken =
+            result.rows.length > 0 &&
+            result.rows[0].access_token;
 
-        if (!hasToken) {
+        if (!hasValidToken) {
+            console.log("🔁 No valid token → redirecting to auth");
+
             return res.status(200).send(`
                 <script>
                   window.top.location.href = "/auth?shop=${shop}";
@@ -120,7 +125,7 @@ app.get("/", async (req, res) => {
             `);
         }
 
-        console.log("Token found → loading frontend");
+        console.log("✅ Token valid → loading frontend");
 
         return res.redirect(
             `/frontend/?shop=${encodeURIComponent(shop)}&host=${encodeURIComponent(host)}`

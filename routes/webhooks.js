@@ -1,5 +1,6 @@
 import express from "express";
 import crypto from "crypto";
+import pool from "../utils/db.js";
 
 const router = express.Router();
 
@@ -33,11 +34,19 @@ function verifyWebhook(req, res, next) {
 router.post("/app/uninstalled", verifyWebhook, async (req, res) => {
     try {
         const payload = JSON.parse(req.body.toString("utf8"));
+        const shop = payload.shop_domain;
 
-        console.log("✅ Webhook received: APP_UNINSTALLED");
-        console.log(payload);
+        console.log("🧹 APP_UNINSTALLED for:", shop);
 
-        // TODO: delete shop token / data from DB if needed
+        await pool.query(
+            `
+            UPDATE shop_tokens
+            SET access_token = null,
+                updated_at = now()
+            WHERE shop = $1
+            `,
+            [shop]
+        );
 
         res.status(200).send("OK");
     } catch (err) {
