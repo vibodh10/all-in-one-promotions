@@ -35,7 +35,7 @@ async function registerWebhooks(session) {
             data: {
                 webhook: {
                     topic: "app/uninstalled",
-                    address: `${process.env.HOST}/api/webhooks/app/uninstalled`,
+                    address: `${process.env.APP_URL}/api/webhooks/app/uninstalled`,
                     format: "json",
                 },
             },
