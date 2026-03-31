@@ -107,9 +107,9 @@ router.get("/auth/callback", async (req, res) => {
 
         await pool.query(
             `
-              INSERT INTO shops (shop, plan)
-              VALUES ($1, 'grandfathered')
-              ON CONFLICT (shop) DO NOTHING
+                INSERT INTO shops (shop, isGrandfathered)
+                VALUES ($1, true)
+                ON CONFLICT (shop) DO NOTHING
             `,
             [session.shop]
         );

@@ -182,11 +182,13 @@ router.post("/", verifyRequest, async (req, res) => {
       const settings = await getShopSettings(shop);
 
       if (settings?.email_notifications && settings?.contact_email) {
+        const offerName = created.name || "Your offer";
+
         await sendEmail(
             settings.contact_email,
             "Your offer is now live",
             `<h2>Your offer is now active</h2>
-           <p>The offer <strong>${offer.name}</strong> is now running in your store.</p>`
+            <p><strong>${offerName}</strong> is now live in your store.</p>`
         );
       }
     }
