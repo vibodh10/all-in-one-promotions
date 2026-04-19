@@ -158,4 +158,37 @@ export async function verifyRequest(req, res, next) {
     }
 }
 
+// export async function verifyRequest(req, res, next) {
+//     try {
+//         const authHeader = req.headers.authorization;
+//
+//         if (!authHeader) {
+//             return res.status(401).send("Missing Authorization header");
+//         }
+//
+//         const token = authHeader.replace("Bearer ", "");
+//
+//         // ✅ Decode and verify session token
+//         const decoded = await shopify.session.decodeSessionToken(token);
+//
+//         // Extract shop domain
+//         const shop = decoded.dest.replace("https://", "");
+//
+//         // 🔑 Get offline access token from DB (your existing system)
+//         const shopRecord = await database.getShopByDomain(shop);
+//
+//         if (!shopRecord || !shopRecord.access_token) {
+//             return res.status(401).send("Shop not found");
+//         }
+//
+//         req.shop = shop;
+//         req.accessToken = shopRecord.access_token;
+//
+//         next();
+//     } catch (error) {
+//         console.error("Verify error:", error);
+//         res.status(401).send("Invalid session token");
+//     }
+// }
+
 export default router;

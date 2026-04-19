@@ -41,7 +41,6 @@ function Analytics() {
 
             const response = await api.get('/analytics/dashboard', {
                 params: { period },
-                
             });
 
             setMetrics(response.data.data);

@@ -223,17 +223,23 @@ router.get('/dashboard', async (req, res) => {
 
     // Sort by revenue and get top 5
     metrics.topPerformingOffers = Object.entries(offerPerformance)
-      .map(([offerId, stats]) => {
-        const offer = offers.find(o => String(o.id) === offerId);
-        return {
-          offerId,
-          offerName: offer?.name || 'Unknown',
-          ...stats,
-          conversionRate: stats.impressions > 0 ? (stats.conversions / stats.impressions) * 100 : 0
-        };
-      })
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
+        .map(([offerId, stats]) => {
+          const offer = offers.find(o => String(o.id) === offerId);
+
+          if (!offer) return null;
+
+          return {
+            offerId,
+            offerName: offer.name,
+            ...stats,
+            conversionRate: stats.impressions > 0
+                ? (stats.conversions / stats.impressions) * 100
+                : 0
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 5);
 
     res.json({
       success: true,

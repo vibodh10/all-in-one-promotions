@@ -26,8 +26,8 @@ const PORT = process.env.PORT || 3000;
 app.use("/api/webhooks", express.raw({ type: "*/*" }), webhookRoutes);
 
 // ✅ Body parsers
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ limit: "1mb", extended: true }));
 
 // ✅ Basic CORS (keep it simple)
 app.use((req, res, next) => {
