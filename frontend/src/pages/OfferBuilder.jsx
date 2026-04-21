@@ -153,21 +153,24 @@ function OfferBuilder() {
         if (s === 1) {
             if (!offerData.name.trim()) newErrors.push("Offer name is required");
 
-            // If one date exists, both must exist
-            if (
-                (offerData.startDate && !offerData.endDate) ||
-                (!offerData.startDate && offerData.endDate)
-            ) {
-                newErrors.push("Both start and end date must be provided");
+            const now = new Date();
+
+            const start = offerData.startDate ? new Date(offerData.startDate) : null;
+            const end = offerData.endDate ? new Date(offerData.endDate) : null;
+
+            // ✅ If both exist → start must be before end
+            if (start && end && start >= end) {
+                newErrors.push("Start date/time must be before end date/time");
             }
 
-            // If both provided, validate order
-            if (
-                offerData.startDate &&
-                offerData.endDate &&
-                new Date(offerData.startDate) >= new Date(offerData.endDate)
-            ) {
-                newErrors.push("Start date must be before end date");
+            // ✅ Start must not be in the past
+            if (start && start < now) {
+                newErrors.push("Start date/time cannot be in the past");
+            }
+
+            // ✅ End must not be in the past (optional but recommended)
+            if (end && end < now) {
+                newErrors.push("End date/time cannot be in the past");
             }
 
             // Offer type required
@@ -297,9 +300,13 @@ function OfferBuilder() {
                 styling: offerData.styling,
 
                 schedule: {
-                    startDate: offerData.startDate || null,
-                    endDate: offerData.endDate || null,
-                    timezone: "UTC",
+                    startDate: offerData.startDate
+                        ? new Date(offerData.startDate).toISOString()
+                        : null,
+                    endDate: offerData.endDate
+                        ? new Date(offerData.endDate).toISOString()
+                        : null,
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 },
 
                 targeting: {
@@ -315,7 +322,9 @@ function OfferBuilder() {
                     revenue: 0,
                 },
 
-                status: publish ? "active" : "draft",
+                status: publish
+                    ? (offerData.startDate ? "scheduled" : "active")
+                    : "draft",
             };
 
             const params = new URLSearchParams(window.location.search);
@@ -368,15 +377,15 @@ function OfferBuilder() {
                 />
 
                 <TextField
-                    label="Start Date (optional)"
-                    type="date"
+                    label="Start Date & Time (optional)"
+                    type="datetime-local"
                     value={offerData.startDate}
                     onChange={(v) => handleChange("startDate", v)}
                 />
 
                 <TextField
-                    label="End Date (optional)"
-                    type="date"
+                    label="End Date & Time (optional)"
+                    type="datetime-local"
                     value={offerData.endDate}
                     onChange={(v) => handleChange("endDate", v)}
                 />

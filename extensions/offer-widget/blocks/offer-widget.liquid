@@ -1,11 +1,13 @@
 {% if template.name == 'product' and product %}
   {% assign variant_id = product.selected_or_first_available_variant.id %}
+  {% assign variant_price = product.selected_or_first_available_variant.price %}
 
   <div
     id="smart-offer-root-{{ section.id }}"
     class="smart-offer"
     data-variant-id="{{ variant_id }}"
     data-product-gid="gid://shopify/Product/{{ product.id }}"
+    data-price="{{ variant_price }}"
     data-shop="{{ shop.permanent_domain }}">
     <div class="smart-offer__loading">Loading offer…</div>
   </div>
@@ -88,9 +90,57 @@
     opacity:.65;
     background:rgba(0,0,0,.02);
   }
+
+  .smart-offer__pricing{
+    border:1px solid rgba(0,0,0,.08);
+    border-radius:10px;
+    padding:12px;
+    margin:12px 0;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    background:rgba(0,0,0,.02);
+  }
+
+  .smart-offer__row{
+    display:flex;
+    justify-content:space-between;
+    font-size:14px;
+  }
+
+  .smart-offer__label{
+    opacity:.7;
+  }
+
+  .smart-offer__value{
+    font-weight:500;
+  }
+
+  .smart-offer__retail .smart-offer__value{
+    text-decoration:line-through;
+    opacity:.6;
+  }
+
+  .smart-offer__savings .smart-offer__value{
+    color:#0a7f3f;
+    font-weight:600;
+  }
+
+  .smart-offer__deal{
+    border-top:1px dashed rgba(0,0,0,.1);
+    margin-top:6px;
+    padding-top:6px;
+    font-size:15px;
+  }
+
+  .smart-offer__deal .smart-offer__value{
+    font-size:18px;
+    font-weight:700;
+  }
   </style>
 
   <script>
+  console.log("VERSION: POST_APPROVAL");
   (function () {
 
     const root = document.getElementById("smart-offer-root-{{ section.id }}");
@@ -196,11 +246,47 @@
 
     function renderBundle(offer){
 
+      const currency = window.Shopify?.currency?.active || "GBP";
+      const money = new Intl.NumberFormat(undefined,{
+        style:"currency",
+        currency
+      });
+
+      const price = Number(root.dataset.price) / 100;
+      console.log("PRICE:", root.dataset.price);
+
+      const quantity = Number(offer.minQuantity || 2);
+      const discount = Number(offer.discountValue || 0) / 100;
+
+      const retail = price * quantity;
+      const savings = retail * discount;
+      const deal = retail - savings;
+
       root.innerHTML = `
-        <div class="smart-offer__title">🎁 ${offer.name || "Bundle & Save"}</div>
+        <div class="smart-offer__title">${offer.name || "Bundle & Save"}</div>
         <p class="smart-offer__desc">
-          Buy ${offer.minQuantity || 2}+ items and save ${offer.discountValue || 0}%
+          Buy ${quantity}+ items and save ${offer.discountValue || 0}%
         </p>
+
+        <div class="smart-offer__pricing">
+
+          <div class="smart-offer__row smart-offer__retail">
+            <span class="smart-offer__label">Retail Price:</span>
+            <span class="smart-offer__value">${money.format(retail)}</span>
+          </div>
+
+          <div class="smart-offer__row smart-offer__savings">
+            <span class="smart-offer__label">Savings:</span>
+            <span class="smart-offer__value">-${money.format(savings)}</span>
+          </div>
+
+          <div class="smart-offer__row smart-offer__deal">
+            <span class="smart-offer__label">Deal price:</span>
+            <span class="smart-offer__value">${money.format(deal)}</span>
+          </div>
+
+        </div>
+
         ${settings.showBranding ? `<div class="smart-offer-brand">Powered by Oban Offers</div>` : ""}
       `;
     }
@@ -212,34 +298,29 @@
     function renderTierOffer(offer){
 
       const tiers = Array.isArray(offer.tiers) ? offer.tiers : [];
-
       if (!tiers.length){
         root.innerHTML = "";
         return;
       }
 
       const currency = window.Shopify?.currency?.active || "GBP";
-
       const money = new Intl.NumberFormat(undefined,{
         style:"currency",
         currency
       });
 
+      const price = Number(root.dataset.price) / 100;
+
       const tierHTML = tiers.map((tier,index)=>{
-
-        const quantity = Number(tier.quantity);
-        const discount = Number(tier.discount);
-
         return `
           <li class="smart-offer__tier">
             <label>
-              <input type="radio" name="smart-tier" value="${quantity}" ${index===0?"checked":""}>
-              <span>Buy ${quantity}+</span>
-              <strong>Save ${discount}%</strong>
+              <input type="radio" name="smart-tier" value="${tier.quantity}" data-discount="${tier.discount}" ${index===0?"checked":""}>
+              <span>Buy ${tier.quantity}+</span>
+              <strong>Save ${tier.discount}%</strong>
             </label>
           </li>
         `;
-
       }).join("");
 
       const branding = settings.showBranding
@@ -247,11 +328,64 @@
         : "";
 
       root.innerHTML = `
-        <div class="smart-offer__title">🎁 ${offer.name || "Special Offer"}</div>
+        <div class="smart-offer__title">${offer.name || "Special Offer"}</div>
+
         <ul class="smart-offer__tiers">${tierHTML}</ul>
+
+        <div id="smart-offer-pricing" class="smart-offer__pricing"></div>
+
         <button id="smart-offer-btn" class="smart-offer__btn">Add to cart</button>
+
         ${branding}
       `;
+
+      const pricingBox = document.getElementById("smart-offer-pricing");
+
+      function updatePricing(){
+        const selected = root.querySelector('input[name="smart-tier"]:checked');
+        if (!selected) return;
+
+        const quantity = Number(selected.value);
+        const discount = Number(selected.dataset.discount) / 100;
+
+        let retail = price * quantity;
+        let savings, deal;
+
+        if (offer.type === "volume_discount") {
+          // ✅ CURRENT LOGIC (keep as-is)
+          savings = retail * discount;
+          deal = retail - savings;
+
+        } else if (offer.type === "quantity_break") {
+          // ✅ FIXED LOGIC
+          const discountedUnit = price * (1 - discount);
+          deal = discountedUnit * quantity;
+          savings = retail - deal;
+        }
+
+        pricingBox.innerHTML = `
+          <div class="smart-offer__row smart-offer__retail">
+            <span class="smart-offer__label">Retail price:</span>
+            <span class="smart-offer__value">${money.format(retail)} (For ${quantity} packs)</span>
+          </div>
+
+          <div class="smart-offer__row smart-offer__savings">
+            <span class="smart-offer__label">Savings:</span>
+            <span class="smart-offer__value">-${money.format(savings)}</span>
+          </div>
+
+          <div class="smart-offer__row smart-offer__deal">
+            <span class="smart-offer__label">Deal price:</span>
+            <span class="smart-offer__value">${money.format(deal)}</span>
+          </div>
+        `;
+      }
+
+      root.querySelectorAll('input[name="smart-tier"]').forEach(input=>{
+        input.addEventListener("change", updatePricing);
+      });
+
+      updatePricing();
 
       const btn = document.getElementById("smart-offer-btn");
 
@@ -262,17 +396,12 @@
 
         const quantity = Number(selected.value);
 
-        /* -------- TRACK CLICK -------- */
-
-        trackEvent("offer_click", offer.id, {
-          quantity
-        });
+        trackEvent("offer_click", offer.id, { quantity });
 
         btn.disabled = true;
         btn.textContent = "Adding...";
 
         try{
-
           await fetch("/cart/add.js",{
             method:"POST",
             headers:{
@@ -280,34 +409,19 @@
               "Accept":"application/json"
             },
             body:JSON.stringify({
-              items:[
-                {
-                  id:Number(variantId),
-                  quantity:quantity
-                }
-              ]
+              items:[{ id:Number(variantId), quantity }]
             })
           });
 
-          /* -------- TRACK OFFER APPLIED -------- */
-
-          trackEvent("offer_applied", offer.id, {
-            quantity
-          });
-
+          trackEvent("offer_applied", offer.id, { quantity });
           window.location.href="/cart";
 
         }catch(err){
-
-          console.error(err);
           btn.disabled=false;
           btn.textContent="Add to cart";
-          alert("Failed to add to cart");
-
         }
 
       });
-
     }
 
   })();

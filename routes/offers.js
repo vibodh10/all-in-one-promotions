@@ -18,7 +18,7 @@ import { sendEmail } from "../utils/email.js";
 /* ================================
    TOKEN HELPER (CRITICAL FIX)
 ================================ */
-async function getAccessToken(shop) {
+export async function getAccessToken(shop) {
   const result = await pool.query(
       "SELECT access_token FROM shop_tokens WHERE shop = $1",
       [shop]
