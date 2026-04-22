@@ -50,7 +50,20 @@ router.get("/offers", async (req, res) => {
   }
 
   try {
-    const offers = await database.getOffersByProduct(productId, shop);
+    const allOffers = await database.getOffers({
+      shopId: shop,
+      status: "active"
+    });
+
+    const offers = allOffers.filter(o => {
+
+      // 🔥 NEW: all products
+      if (o.targeting?.mode === "all") return true;
+
+      // existing logic
+      return o.products?.includes(productId) || false;
+
+    });
 
     const settingsResult = await pool.query(
         `SELECT show_branding, enable_animations
@@ -254,12 +267,24 @@ router.patch("/:id/status", verifyRequest, async (req, res) => {
         status: "active"
       });
 
-      const hasConflict = activeOffers.some(o =>
-          o.id !== id &&
-          o.products?.some(p =>
-              offer.products?.includes(p)
-          )
-      );
+      const hasConflict = activeOffers.some(o => {
+
+        if (o.id === id) return false;
+
+        const modeA = o.targeting?.mode || "specific_products";
+        const modeB = offer.targeting?.mode || "specific_products";
+
+        // 🔥 If either is "all" → conflict
+        if (modeA === "all" || modeB === "all") {
+          return true;
+        }
+
+        // existing product overlap check
+        return o.products?.some(p =>
+            offer.products?.includes(p)
+        );
+
+      });
 
       if (hasConflict) {
         return res.status(400).json({

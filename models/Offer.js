@@ -64,6 +64,7 @@ class Offer {
     
     // Targeting
     this.targeting = data.targeting || {
+      mode: "specific_products",
       customerGroups: [],
       countries: [],
       excludeProducts: []
@@ -100,8 +101,8 @@ class Offer {
       errors.push('Shop ID is required');
     }
 
-    if (this.products.length === 0 && this.collections.length === 0) {
-      errors.push('At least one product or collection must be selected');
+    if (this.targeting?.mode !== "all" && this.products.length === 0) {
+      errors.push('Select at least one product');
     }
 
     if (this.type === 'quantity_break' && this.tiers.length === 0) {

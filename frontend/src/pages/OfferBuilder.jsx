@@ -61,6 +61,9 @@ function OfferBuilder() {
         description: "",
         type: "quantity_break",
         products: [],
+        targeting: {
+            mode: "specific_products"
+        },
         startDate: getLocalDateTimeString(now),
         endDate: getLocalDateTimeString(in7Days),
         discountType: "percentage",
@@ -189,7 +192,12 @@ function OfferBuilder() {
 
         // Step 2: targeting (products)
         if (s === 2) {
-            if (offerData.products.length === 0) newErrors.push("Select at least one product");
+            if (
+                offerData.targeting?.mode !== "all" &&
+                offerData.products.length === 0
+            ) {
+                newErrors.push("Select at least one product");
+            }
         }
 
         // Step 3: offer details (required for publish, recommended for draft)
@@ -320,6 +328,7 @@ function OfferBuilder() {
                 },
 
                 targeting: {
+                    mode: offerData.targeting?.mode || "specific_products",
                     customerGroups: [],
                     countries: [],
                     excludeProducts: [],
@@ -410,45 +419,74 @@ function OfferBuilder() {
         <Card>
             <BlockStack gap="400">
 
-                {offerData.products.length === 0 ? (
-                    <EmptyState
-                        heading="Select products for this offer"
-                        action={{
-                            content: "Select Products",
-                            onAction: openProductPicker
-                        }}
-                        image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
-                    >
-                        <p>
-                            Choose the products that this discount offer should apply to.
-                        </p>
-                    </EmptyState>
-                ) : (
+                {/* ✅ NEW: mode selector */}
+                <Select
+                    label="Apply to"
+                    options={[
+                        { label: "Specific products", value: "specific_products" },
+                        { label: "All products", value: "all" }
+                    ]}
+                    value={offerData.targeting?.mode || "specific_products"}
+                    onChange={(v) =>
+                        setOfferData(prev => ({
+                            ...prev,
+                            targeting: {
+                                ...prev.targeting,
+                                mode: v
+                            }
+                        }))
+                    }
+                />
+
+                {/* ✅ If ALL products → no picker */}
+                {offerData.targeting?.mode === "all" && (
+                    <Banner tone="info">
+                        <Text>This offer will apply to all products.</Text>
+                    </Banner>
+                )}
+
+                {/* ✅ If SPECIFIC → show picker */}
+                {offerData.targeting?.mode !== "all" && (
                     <>
-                        <Button onClick={openProductPicker}>Add More Products</Button>
+                        {offerData.products.length === 0 ? (
+                            <EmptyState
+                                heading="Select products for this offer"
+                                action={{
+                                    content: "Select Products",
+                                    onAction: openProductPicker
+                                }}
+                                image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+                            >
+                                <p>Choose the products that this discount offer should apply to.</p>
+                            </EmptyState>
+                        ) : (
+                            <>
+                                <Button onClick={openProductPicker}>Add More Products</Button>
 
-                        <ResourceList
-                            resourceName={{ singular: "product", plural: "products" }}
-                            items={offerData.products}
-                            renderItem={(item) => {
-                                const media = item.images?.[0]?.originalSrc ? (
-                                    <Thumbnail source={item.images[0].originalSrc} alt={item.title} />
-                                ) : null;
+                                <ResourceList
+                                    resourceName={{ singular: "product", plural: "products" }}
+                                    items={offerData.products}
+                                    renderItem={(item) => {
+                                        const media = item.images?.[0]?.originalSrc ? (
+                                            <Thumbnail source={item.images[0].originalSrc} alt={item.title} />
+                                        ) : null;
 
-                                return (
-                                    <ResourceItem id={item.id} media={media}>
-                                        <InlineStack align="space-between">
-                                            <Text>{item.title}</Text>
-                                            <Button
-                                                plain
-                                                icon={DeleteIcon}
-                                                onClick={() => removeProduct(item.id)}
-                                            />
-                                        </InlineStack>
-                                    </ResourceItem>
-                                );
-                            }}
-                        />
+                                        return (
+                                            <ResourceItem id={item.id} media={media}>
+                                                <InlineStack align="space-between">
+                                                    <Text>{item.title}</Text>
+                                                    <Button
+                                                        plain
+                                                        icon={DeleteIcon}
+                                                        onClick={() => removeProduct(item.id)}
+                                                    />
+                                                </InlineStack>
+                                            </ResourceItem>
+                                        );
+                                    }}
+                                />
+                            </>
+                        )}
                     </>
                 )}
 
