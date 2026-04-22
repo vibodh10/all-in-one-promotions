@@ -33,12 +33,8 @@ router.get("/process-offers", async (req, res) => {
                 ? new Date(offer.schedule.endDate)
                 : null;
 
-            const shop = offer.shop_id;
-            console.log("ROW SHOP_ID:", row.shop_id);
-            console.log("SHOP USED:", shop);
-
+            const shop = row.shop_id;
             const accessToken = await getAccessToken(shop);
-            console.log("ACCESS TOKEN:", accessToken ? "exists" : "missing");
 
             // ✅ ACTIVATE (with guard)
             if (
