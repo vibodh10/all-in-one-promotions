@@ -21,10 +21,20 @@ import { useNavigate } from "react-router-dom";
 import { DeleteIcon } from "@shopify/polaris-icons";
 import { useAppBridge } from "@shopify/app-bridge-react";
 
+function getLocalDateTimeString(date) {
+    const pad = (n) => String(n).padStart(2, "0");
+
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 function OfferBuilder() {
     const navigate = useNavigate();
     const app = useAppBridge();
     const fetchFunction = authenticatedFetch(app);
+
+    const now = new Date();
+    const in7Days = new Date(now);
+    in7Days.setDate(now.getDate() + 7);
 
     const [step, setStep] = useState(1);
     const [errors, setErrors] = useState([]);
@@ -51,8 +61,8 @@ function OfferBuilder() {
         description: "",
         type: "quantity_break",
         products: [],
-        startDate: "",
-        endDate: "",
+        startDate: getLocalDateTimeString(now),
+        endDate: getLocalDateTimeString(in7Days),
         discountType: "percentage",
         discountValue: null, // used for bundle
         tiers: [

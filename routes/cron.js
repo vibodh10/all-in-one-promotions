@@ -33,7 +33,7 @@ router.get("/process-offers", async (req, res) => {
                 ? new Date(offer.schedule.endDate)
                 : null;
 
-            const shop = offer.shopId;
+            const shop = offer.shop_id;
             const accessToken = await getAccessToken(shop);
 
             // ✅ ACTIVATE (with guard)
