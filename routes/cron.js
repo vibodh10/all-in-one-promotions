@@ -50,7 +50,7 @@ router.get("/process-offers", async (req, res) => {
 
                     await pool.query(
                         `UPDATE offers SET status = 'active', shopify_discount_ids = $1 WHERE id = $2`,
-                        [result.automaticDiscountIds, offer.id]
+                        [JSON.stringify(result.automaticDiscountIds), offer.id]
                     );
 
                 } else {
