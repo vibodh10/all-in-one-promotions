@@ -341,7 +341,11 @@ function OfferBuilder() {
                     mode: offerData.targeting?.mode || "specific_products",
                     customerGroups: [],
                     countries: [],
-                    excludeProducts: [],
+
+                    excludeProducts:
+                        offerData.targeting?.mode === "all_except_products"
+                            ? offerData.products.map(p => p.id)
+                            : [],
                 },
 
                 analytics: {

@@ -49,6 +49,9 @@ struct Tier {
 #[derive(Deserialize, Debug)]
 struct Targeting {
     mode: Option<String>,
+
+    #[serde(default)]
+        excludeProducts: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -127,17 +130,36 @@ fn apply_offer(
         _ => return,
     };
 
-    let is_all = offer
-        .targeting
-        .as_ref()
+    let targeting = offer.targeting.as_ref();
+
+    let mode = targeting
         .and_then(|t| t.mode.as_ref())
-        .map(|m| m == "all")
-        .unwrap_or(false);
+        .map(|m| m.as_str())
+        .unwrap_or("specific_products");
+
+    // ⚠️ avoid temporary reference issue
+    let empty: Vec<String> = vec![];
+
+    let exclude = targeting
+        .map(|t| &t.excludeProducts)
+        .unwrap_or(&empty);
 
     for item in cart_items {
 
         // ✅ FILTER
-        if !is_all && !offer.products.iter().any(|p| same_id(&item.product_id, p)) {
+        let applies = match mode {
+            "all" => true,
+
+            "all_except_products" => {
+                !exclude.iter().any(|p| same_id(&item.product_id, p))
+            }
+
+            _ => {
+                offer.products.iter().any(|p| same_id(&item.product_id, p))
+            }
+        };
+
+        if !applies {
             continue;
         }
 
