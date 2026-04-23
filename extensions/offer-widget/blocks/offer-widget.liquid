@@ -341,6 +341,10 @@
 
       const pricingBox = document.getElementById("smart-offer-pricing");
 
+      function roundMoney(value) {
+        return Math.round(value * 100) / 100;
+      }
+
       function updatePricing(){
         const selected = root.querySelector('input[name="smart-tier"]:checked');
         if (!selected) return;
@@ -352,16 +356,19 @@
         let savings, deal;
 
         if (offer.type === "volume_discount") {
-          // ✅ CURRENT LOGIC (keep as-is)
           savings = retail * discount;
           deal = retail - savings;
 
         } else if (offer.type === "quantity_break") {
-          // ✅ FIXED LOGIC
           const discountedUnit = price * (1 - discount);
           deal = discountedUnit * quantity;
           savings = retail - deal;
         }
+
+        // ✅ ROUND HERE (THIS IS THE IMPORTANT PART)
+        retail = roundMoney(retail);
+        deal = Math.round((price * quantity * (1 - discount)) * 100) / 100;
+        savings = roundMoney(retail - deal);
 
         pricingBox.innerHTML = `
           <div class="smart-offer__row smart-offer__retail">

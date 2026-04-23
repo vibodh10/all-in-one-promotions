@@ -55,14 +55,24 @@ router.get("/offers", async (req, res) => {
       status: "active"
     });
 
+    function sameId(a, b) {
+      return a === b || a?.split("/").pop() === b?.split("/").pop();
+    }
+
     const offers = allOffers.filter(o => {
 
-      // 🔥 NEW: all products
-      if (o.targeting?.mode === "all") return true;
+      const mode = o.targeting?.mode || "specific_products";
 
-      // existing logic
-      return o.products?.includes(productId) || false;
+      // ✅ ALL PRODUCTS
+      if (mode === "all") return true;
 
+      // ✅ ALL EXCEPT PRODUCTS
+      if (mode === "all_except_products") {
+        return !o.targeting?.excludeProducts?.some(p => sameId(p, productId));
+      }
+
+      // ✅ SPECIFIC PRODUCTS
+      return o.products?.some(p => sameId(p, productId));
     });
 
     const settingsResult = await pool.query(
@@ -267,6 +277,14 @@ router.patch("/:id/status", verifyRequest, async (req, res) => {
         status: "active"
       });
 
+      function sameId(a, b) {
+        return a === b || a?.split("/").pop() === b?.split("/").pop();
+      }
+
+      function overlaps(listA = [], listB = []) {
+        return listA.some(a => listB.some(b => sameId(a, b)));
+      }
+
       const hasConflict = activeOffers.some(o => {
 
         if (o.id === id) return false;
@@ -274,16 +292,40 @@ router.patch("/:id/status", verifyRequest, async (req, res) => {
         const modeA = o.targeting?.mode || "specific_products";
         const modeB = offer.targeting?.mode || "specific_products";
 
-        // 🔥 If either is "all" → conflict
+        const productsA = o.products || [];
+        const productsB = offer.products || [];
+
+        const excludeA = o.targeting?.excludeProducts || [];
+        const excludeB = offer.targeting?.excludeProducts || [];
+
+        // 🔥 ALL vs anything → always conflict
         if (modeA === "all" || modeB === "all") {
           return true;
         }
 
-        // existing product overlap check
-        return o.products?.some(p =>
-            offer.products?.includes(p)
-        );
+        // 🔥 ALL EXCEPT vs ALL EXCEPT
+        if (modeA === "all_except_products" && modeB === "all_except_products") {
+          // conflict unless both exclude the same full set (rare case)
+          return true;
+        }
 
+        // 🔥 ALL EXCEPT (A) vs SPECIFIC (B)
+        if (modeA === "all_except_products" && modeB === "specific_products") {
+          // conflict if B includes ANY product NOT excluded by A
+          return productsB.some(p =>
+              !excludeA.some(ex => sameId(ex, p))
+          );
+        }
+
+        // 🔥 ALL EXCEPT (B) vs SPECIFIC (A)
+        if (modeB === "all_except_products" && modeA === "specific_products") {
+          return productsA.some(p =>
+              !excludeB.some(ex => sameId(ex, p))
+          );
+        }
+
+        // ✅ SPECIFIC vs SPECIFIC
+        return overlaps(productsA, productsB);
       });
 
       if (hasConflict) {

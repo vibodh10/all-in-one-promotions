@@ -62,7 +62,11 @@ function OfferBuilder() {
         type: "quantity_break",
         products: [],
         targeting: {
-            mode: "specific_products"
+            mode: "specific_products",
+            excludeProducts:
+                offerData.targeting?.mode === "all_except_products"
+                    ? offerData.products.map(p => p.id)
+                    : [],
         },
         startDate: getLocalDateTimeString(now),
         endDate: getLocalDateTimeString(in7Days),
@@ -87,6 +91,12 @@ function OfferBuilder() {
             borderRadius: "4px",
         },
     });
+
+    const targetingModes = [
+        { label: "Specific products", value: "specific_products" },
+        { label: "All products", value: "all" },
+        { label: "All products except selected", value: "all_except_products" },
+    ];
 
     const handleChange = (field, value) =>
         setOfferData((prev) => ({ ...prev, [field]: value }));
@@ -422,18 +432,12 @@ function OfferBuilder() {
                 {/* ✅ NEW: mode selector */}
                 <Select
                     label="Apply to"
-                    options={[
-                        { label: "Specific products", value: "specific_products" },
-                        { label: "All products", value: "all" }
-                    ]}
+                    options={targetingModes}
                     value={offerData.targeting?.mode || "specific_products"}
                     onChange={(v) =>
                         setOfferData(prev => ({
                             ...prev,
-                            targeting: {
-                                ...prev.targeting,
-                                mode: v
-                            }
+                            targeting: { ...prev.targeting, mode: v }
                         }))
                     }
                 />
