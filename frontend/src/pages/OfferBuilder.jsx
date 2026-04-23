@@ -63,10 +63,7 @@ function OfferBuilder() {
         products: [],
         targeting: {
             mode: "specific_products",
-            excludeProducts:
-                offerData.targeting?.mode === "all_except_products"
-                    ? offerData.products.map(p => p.id)
-                    : [],
+            excludeProducts: [],
         },
         startDate: getLocalDateTimeString(now),
         endDate: getLocalDateTimeString(in7Days),
@@ -441,6 +438,7 @@ function OfferBuilder() {
                     onChange={(v) =>
                         setOfferData(prev => ({
                             ...prev,
+                            products: v === "all" ? [] : prev.products,
                             targeting: { ...prev.targeting, mode: v }
                         }))
                     }
