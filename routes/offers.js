@@ -193,9 +193,12 @@ router.post("/", verifyRequest, async (req, res) => {
       return res.status(400).json({ error: validation.errors.join(", ") });
     }
 
-    const created = await database.createOffer(offer.toJSON());
+    const offerData = offer.toJSON();
 
-    if (created.status === "active") {
+    /* ============================================
+       🔥 OVERLAP CHECK (BEFORE INSERT)
+    ============================================ */
+    if (offerData.status === "active") {
       const activeOffers = await database.getOffers({
         shopId: shop,
         status: "active"
@@ -212,30 +215,37 @@ router.post("/", verifyRequest, async (req, res) => {
       const hasConflict = activeOffers.some(o => {
 
         const modeA = o.targeting?.mode || "specific_products";
-        const modeB = created.targeting?.mode || "specific_products";
+        const modeB = offerData.targeting?.mode || "specific_products";
 
         const productsA = o.products || [];
-        const productsB = created.products || [];
+        const productsB = offerData.products || [];
 
         const excludeA = o.targeting?.excludeProducts || [];
-        const excludeB = created.targeting?.excludeProducts || [];
+        const excludeB = offerData.targeting?.excludeProducts || [];
 
+        // 🔥 ALL vs anything
         if (modeA === "all" || modeB === "all") return true;
 
-        if (modeA === "all_except_products" && modeB === "all_except_products") return true;
+        // 🔥 ALL EXCEPT vs ALL EXCEPT
+        if (modeA === "all_except_products" && modeB === "all_except_products") {
+          return true;
+        }
 
+        // 🔥 ALL EXCEPT (A) vs SPECIFIC (B)
         if (modeA === "all_except_products" && modeB === "specific_products") {
           return productsB.some(p =>
               !excludeA.some(ex => sameId(ex, p))
           );
         }
 
+        // 🔥 ALL EXCEPT (B) vs SPECIFIC (A)
         if (modeB === "all_except_products" && modeA === "specific_products") {
           return productsA.some(p =>
               !excludeB.some(ex => sameId(ex, p))
           );
         }
 
+        // ✅ SPECIFIC vs SPECIFIC
         return overlaps(productsA, productsB);
       });
 
@@ -244,7 +254,17 @@ router.post("/", verifyRequest, async (req, res) => {
           error: "Another active offer exists for this product."
         });
       }
+    }
 
+    /* ============================================
+       ✅ SAFE TO INSERT
+    ============================================ */
+    const created = await database.createOffer(offerData);
+
+    /* ============================================
+       🚀 CREATE SHOPIFY DISCOUNT
+    ============================================ */
+    if (created.status === "active") {
       const result = await createDiscount({ shop, accessToken }, created);
 
       await database.updateOffer(created.id, {
@@ -260,13 +280,17 @@ router.post("/", verifyRequest, async (req, res) => {
             settings.contact_email,
             "Your offer is now live",
             `<h2>Your offer is now active</h2>
-            <p><strong>${offerName}</strong> is now live in your store.</p>`
+           <p><strong>${offerName}</strong> is now live in your store.</p>`
         );
       }
     }
 
     const refreshed = await database.getOfferById(created.id, shop);
-    res.status(201).json({ success: true, data: refreshed });
+
+    res.status(201).json({
+      success: true,
+      data: refreshed
+    });
 
   } catch (error) {
     console.error("POST offer error:", error);
