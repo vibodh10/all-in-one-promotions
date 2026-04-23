@@ -196,6 +196,55 @@ router.post("/", verifyRequest, async (req, res) => {
     const created = await database.createOffer(offer.toJSON());
 
     if (created.status === "active") {
+      const activeOffers = await database.getOffers({
+        shopId: shop,
+        status: "active"
+      });
+
+      function sameId(a, b) {
+        return a === b || a?.split("/").pop() === b?.split("/").pop();
+      }
+
+      function overlaps(listA = [], listB = []) {
+        return listA.some(a => listB.some(b => sameId(a, b)));
+      }
+
+      const hasConflict = activeOffers.some(o => {
+
+        const modeA = o.targeting?.mode || "specific_products";
+        const modeB = created.targeting?.mode || "specific_products";
+
+        const productsA = o.products || [];
+        const productsB = created.products || [];
+
+        const excludeA = o.targeting?.excludeProducts || [];
+        const excludeB = created.targeting?.excludeProducts || [];
+
+        if (modeA === "all" || modeB === "all") return true;
+
+        if (modeA === "all_except_products" && modeB === "all_except_products") return true;
+
+        if (modeA === "all_except_products" && modeB === "specific_products") {
+          return productsB.some(p =>
+              !excludeA.some(ex => sameId(ex, p))
+          );
+        }
+
+        if (modeB === "all_except_products" && modeA === "specific_products") {
+          return productsA.some(p =>
+              !excludeB.some(ex => sameId(ex, p))
+          );
+        }
+
+        return overlaps(productsA, productsB);
+      });
+
+      if (hasConflict) {
+        return res.status(400).json({
+          error: "Another active offer exists for this product."
+        });
+      }
+
       const result = await createDiscount({ shop, accessToken }, created);
 
       await database.updateOffer(created.id, {
