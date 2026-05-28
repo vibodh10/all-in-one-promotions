@@ -12,7 +12,7 @@ COPY package*.json ./
 RUN npm ci --only=production
 
 # Copy application files
-COPY all-in-one-promotions .
+# COPY all-in-one-promotions .
 COPY . .
 
 # Production stage
