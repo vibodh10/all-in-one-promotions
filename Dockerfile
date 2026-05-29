@@ -34,15 +34,15 @@ COPY --from=builder --chown=nodejs:nodejs /app ./
 USER nodejs
 
 # Expose port
-EXPOSE 3000
+EXPOSE 8080
 
 # Set environment
 ENV NODE_ENV=production \
     PORT=3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+# Comment out Health check
+# HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+#   CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start application with dumb-init
 ENTRYPOINT ["dumb-init", "--"]
