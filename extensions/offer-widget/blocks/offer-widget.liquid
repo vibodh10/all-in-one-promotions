@@ -8,7 +8,8 @@
     data-variant-id="{{ variant_id }}"
     data-product-gid="gid://shopify/Product/{{ product.id }}"
     data-price="{{ variant_price }}"
-    data-shop="{{ shop.permanent_domain }}">
+    data-shop="{{ shop.permanent_domain }}"
+    data-unit-label="{{ block.settings.unit_label | escape }}">
     <div class="smart-offer__loading">Loading offer…</div>
   </div>
 
@@ -140,7 +141,8 @@
   </style>
 
   <script>
-  console.log("VERSION: POST_APPROVAL");
+  console.log("VERSION: CUSTOM_UNIT_LABEL");
+
   (function () {
 
     const root = document.getElementById("smart-offer-root-{{ section.id }}");
@@ -150,9 +152,8 @@
     const productGid = root.dataset.productGid;
     const shop = root.dataset.shop;
 
-    /* ----------------------------- */
-    /* Analytics helper              */
-    /* ----------------------------- */
+    // ✅ NEW
+    const unitLabel = root.dataset.unitLabel || "packs";
 
     function trackEvent(eventName, offerId, metadata = {}) {
 
@@ -192,8 +193,6 @@
         settings = data?.settings || settings;
 
         const offer = data.offers[0];
-
-        /* -------- TRACK OFFER VIEW -------- */
 
         const observer = new IntersectionObserver(entries => {
 
@@ -240,10 +239,6 @@
         root.innerHTML = "";
       });
 
-    /* ----------------------------- */
-    /* Bundle Offer                  */
-    /* ----------------------------- */
-
     function renderBundle(offer){
 
       const currency = window.Shopify?.currency?.active || "GBP";
@@ -253,7 +248,6 @@
       });
 
       const price = Number(root.dataset.price) / 100;
-      console.log("PRICE:", root.dataset.price);
 
       const quantity = Number(offer.minQuantity || 2);
       const discount = Number(offer.discountValue || 0) / 100;
@@ -264,8 +258,9 @@
 
       root.innerHTML = `
         <div class="smart-offer__title">${offer.name || "Bundle & Save"}</div>
+
         <p class="smart-offer__desc">
-          Buy ${quantity}+ items and save ${offer.discountValue || 0}%
+          Buy ${quantity}+ ${unitLabel} and save ${offer.discountValue || 0}%
         </p>
 
         <div class="smart-offer__pricing">
@@ -291,19 +286,17 @@
       `;
     }
 
-    /* ----------------------------- */
-    /* Tiered Offer                  */
-    /* ----------------------------- */
-
     function renderTierOffer(offer){
 
       const tiers = Array.isArray(offer.tiers) ? offer.tiers : [];
+
       if (!tiers.length){
         root.innerHTML = "";
         return;
       }
 
       const currency = window.Shopify?.currency?.active || "GBP";
+
       const money = new Intl.NumberFormat(undefined,{
         style:"currency",
         currency
@@ -316,7 +309,7 @@
           <li class="smart-offer__tier">
             <label>
               <input type="radio" name="smart-tier" value="${tier.quantity}" data-discount="${tier.discount}" ${index===0?"checked":""}>
-              <span>Buy ${tier.quantity}+</span>
+              <span>Buy ${tier.quantity}+ ${unitLabel}</span>
               <strong>Save ${tier.discount}%</strong>
             </label>
           </li>
@@ -346,6 +339,7 @@
       }
 
       function updatePricing(){
+
         const selected = root.querySelector('input[name="smart-tier"]:checked');
         if (!selected) return;
 
@@ -356,16 +350,18 @@
         let savings, deal;
 
         if (offer.type === "volume_discount") {
+
           savings = retail * discount;
           deal = retail - savings;
 
         } else if (offer.type === "quantity_break") {
+
           const discountedUnit = price * (1 - discount);
           deal = discountedUnit * quantity;
           savings = retail - deal;
+
         }
 
-        // ✅ ROUND HERE (THIS IS THE IMPORTANT PART)
         retail = roundMoney(retail);
         deal = Math.round((price * quantity * (1 - discount)) * 100) / 100;
         savings = roundMoney(retail - deal);
@@ -373,7 +369,9 @@
         pricingBox.innerHTML = `
           <div class="smart-offer__row smart-offer__retail">
             <span class="smart-offer__label">Retail price:</span>
-            <span class="smart-offer__value">${money.format(retail)} (For ${quantity} packs)</span>
+            <span class="smart-offer__value">
+              ${money.format(retail)} (For ${quantity} ${unitLabel})
+            </span>
           </div>
 
           <div class="smart-offer__row smart-offer__savings">
@@ -409,6 +407,7 @@
         btn.textContent = "Adding...";
 
         try{
+
           await fetch("/cart/add.js",{
             method:"POST",
             headers:{
@@ -421,11 +420,14 @@
           });
 
           trackEvent("offer_applied", offer.id, { quantity });
+
           window.location.href="/cart";
 
         }catch(err){
+
           btn.disabled=false;
           btn.textContent="Add to cart";
+
         }
 
       });
@@ -440,6 +442,14 @@
 {
   "name": "Offer Widget",
   "target": "section",
-  "settings": []
+  "settings": [
+    {
+      "type": "text",
+      "id": "unit_label",
+      "label": "Product unit label",
+      "default": "packs",
+      "info": "Examples: packs, bottles, pens, boxes"
+    }
+  ]
 }
 {% endschema %}

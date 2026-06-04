@@ -2,6 +2,9 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+console.log("SCOPES =", process.env.SHOPIFY_SCOPES);
+console.log("RESEND =", process.env.RESEND_API_KEY ? "FOUND" : "MISSING");
+
 import "@shopify/shopify-api/adapters/node";
 import express from "express";
 import path from "path";
@@ -84,9 +87,13 @@ const __dirname = path.dirname(__filename);
 const isDev = process.env.NODE_ENV !== "production";
 
 if (isDev) {
-    app.use("/frontend", (req, res) => {
-        res.redirect(`http://localhost:5173${req.originalUrl.replace("/frontend", "")}`);
-    });
+    const frontendPath = path.join(__dirname, "frontend", "dist");
+
+    app.use("/frontend", express.static(frontendPath));
+
+    app.get("/frontend*", (req, res) =>
+        res.sendFile(path.join(frontendPath, "index.html"))
+    );
 } else {
     const frontendPath = path.join(__dirname, "frontend", "dist");
     app.use("/frontend", express.static(frontendPath));

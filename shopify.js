@@ -2,7 +2,7 @@
 import { Shopify } from "@shopify/shopify-api";
 
 Shopify.Context.initialize({
-    API_KEY: process.env.VITE_SHOPIFY_API_KEY,
+    API_KEY: process.env.SHOPIFY_API_KEY,
     API_SECRET_KEY: process.env.SHOPIFY_API_SECRET,
     SCOPES: process.env.SHOPIFY_SCOPES.split(","),
     HOST_NAME: process.env.HOST.replace(/^https?:\/\//, ""),

@@ -5,20 +5,11 @@ name = "Oban All-in-one Offers"
 application_url = "https://all-in-one-promotions.onrender.com"
 embedded = true
 
+[build]
+automatically_update_urls_on_dev = true
+
 [webhooks]
 api_version = "2025-10"
-
-  [[webhooks.subscriptions]]
-  topics = [ "app/uninstalled" ]
-  uri = "/api/webhooks/app/uninstalled"
-
-  [[webhooks.subscriptions]]
-  topics = [ "products/update" ]
-  uri = "/api/webhooks/products/update"
-
-  [[webhooks.subscriptions]]
-  topics = [ "shop/update" ]
-  uri = "/api/webhooks/shop/update"
 
   [[webhooks.subscriptions]]
   uri = "/api/webhooks/customers/data_request"
@@ -31,6 +22,18 @@ api_version = "2025-10"
   [[webhooks.subscriptions]]
   uri = "/api/webhooks/shop/redact"
   compliance_topics = [ "shop/redact" ]
+
+  [[webhooks.subscriptions]]
+  topics = [ "products/update" ]
+  uri = "/api/webhooks/products/update"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/api/webhooks/app/uninstalled"
+
+  [[webhooks.subscriptions]]
+  topics = [ "shop/update" ]
+  uri = "/api/webhooks/shop/update"
 
   [[webhooks.subscriptions]]
   topics = [ "products/delete" ]

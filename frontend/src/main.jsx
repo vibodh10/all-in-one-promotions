@@ -17,10 +17,15 @@ const config = {
     forceRedirect: true,
 };
 
+console.log("HOST:", host);
+console.log("API KEY:", import.meta.env.VITE_SHOPIFY_API_KEY);
+console.log("URL:", window.location.href);
+
 /* Initialize App Bridge for Shopify automated check */
 const app = createApp(config);
+console.log("APP CREATED", app);
 
-// setAppBridgeApp(app);
+setAppBridgeApp(app);
 
 ReactDOM.createRoot(document.getElementById("root")).render(
     <AppBridgeProvider config={config}>

@@ -14,6 +14,8 @@ import {
 } from '@shopify/polaris';
 import { useNavigate } from 'react-router-dom';
 import api from "../api/axios.js";
+import {useAppBridge} from "@shopify/app-bridge-react";
+import {authenticatedFetch} from "@shopify/app-bridge-utils";
 
 function Dashboard() {
     const navigate = useNavigate();
@@ -21,12 +23,15 @@ function Dashboard() {
     const [metrics, setMetrics] = useState(null);
     const [topOffers, setTopOffers] = useState([]);
     const [showContent, setShowContent] = useState(false);
+    const app = useAppBridge();
 
     useEffect(() => {
         fetchDashboardData();
     }, []);
 
     const fetchDashboardData = async () => {
+        console.log("FETCH DASHBOARD CALLED");
+
         try {
             setLoading(true);
 

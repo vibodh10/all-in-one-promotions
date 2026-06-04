@@ -1,4 +1,10 @@
 // middleware/auth.js
+import dotenv from "dotenv";
+dotenv.config();
+
+console.log("AUTH SCOPES =", process.env.SHOPIFY_SCOPES);
+console.log("AUTH RESEND =", process.env.RESEND_API_KEY ? "FOUND" : "MISSING");
+
 import express from "express";
 import "@shopify/shopify-api/adapters/node";
 import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
@@ -12,13 +18,32 @@ const router = express.Router();
  * Do NOT create another instance elsewhere.
  */
 
+const scopes = (
+    process.env.SHOPIFY_SCOPES
+)
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+// export const shopify = shopifyApi({
+//     apiKey: "YOUR_API_KEY",
+//     apiSecretKey: "YOUR_SECRET",
+//     scopes: [
+//         "write_products",
+//         "read_products",
+//         "write_discounts",
+//         "read_discounts"
+//     ],
+//     hostName: "your-tunnel.trycloudflare.com",
+//     apiVersion: LATEST_API_VERSION,
+//     isEmbeddedApp: true,
+// });
+console.log(scopes);
+
 export const shopify = shopifyApi({
-    apiKey: process.env.VITE_SHOPIFY_API_KEY,
+    apiKey: process.env.SHOPIFY_API_KEY,
     apiSecretKey: process.env.SHOPIFY_API_SECRET,
-    scopes: (process.env.SHOPIFY_SCOPES || "")
-        .split(",")
-        .map(s => s.trim())
-        .filter(Boolean),
+    scopes,
     hostName: (process.env.HOST || "").replace(/https?:\/\//, ""),
     apiVersion: LATEST_API_VERSION,
     isEmbeddedApp: true,
@@ -131,54 +156,21 @@ router.get("/auth/callback", async (req, res) => {
  * Verify middleware for API routes
  * ✅ Reads access token from DB every time.
  */
-export async function verifyRequest(req, res, next) {
-    try {
-        const shop =
-            req.query.shop ||
-            req.headers["x-shopify-shop-domain"];
-
-        if (!shop) {
-            return res.status(401).send("Missing shop");
-        }
-
-        const shopRecord = await database.getShopByDomain(shop);
-
-        if (!shopRecord || !shopRecord.access_token) {
-            console.log("⚠️ No token found, redirecting to auth:", shop);
-            return res.redirect(`/auth?shop=${encodeURIComponent(shop)}`);
-        }
-
-        req.shop = shop;
-        req.accessToken = shopRecord.access_token;
-
-        next();
-    } catch (error) {
-        console.error("Verify error:", error);
-        res.status(500).send("Auth error");
-    }
-}
-
 // export async function verifyRequest(req, res, next) {
 //     try {
-//         const authHeader = req.headers.authorization;
+//         const shop =
+//             req.query.shop ||
+//             req.headers["x-shopify-shop-domain"];
 //
-//         if (!authHeader) {
-//             return res.status(401).send("Missing Authorization header");
+//         if (!shop) {
+//             return res.status(401).send("Missing shop");
 //         }
 //
-//         const token = authHeader.replace("Bearer ", "");
-//
-//         // ✅ Decode and verify session token
-//         const decoded = await shopify.session.decodeSessionToken(token);
-//
-//         // Extract shop domain
-//         const shop = decoded.dest.replace("https://", "");
-//
-//         // 🔑 Get offline access token from DB (your existing system)
 //         const shopRecord = await database.getShopByDomain(shop);
 //
 //         if (!shopRecord || !shopRecord.access_token) {
-//             return res.status(401).send("Shop not found");
+//             console.log("⚠️ No token found, redirecting to auth:", shop);
+//             return res.redirect(`/auth?shop=${encodeURIComponent(shop)}`);
 //         }
 //
 //         req.shop = shop;
@@ -187,8 +179,41 @@ export async function verifyRequest(req, res, next) {
 //         next();
 //     } catch (error) {
 //         console.error("Verify error:", error);
-//         res.status(401).send("Invalid session token");
+//         res.status(500).send("Auth error");
 //     }
 // }
+
+export async function verifyRequest(req, res, next) {
+    try {
+        const authHeader = req.headers.authorization;
+
+        if (!authHeader) {
+            return res.status(401).send("Missing Authorization header");
+        }
+
+        const token = authHeader.replace("Bearer ", "");
+
+        // ✅ Decode and verify session token
+        const decoded = await shopify.session.decodeSessionToken(token);
+
+        // Extract shop domain
+        const shop = decoded.dest.replace("https://", "");
+
+        // 🔑 Get offline access token from DB (your existing system)
+        const shopRecord = await database.getShopByDomain(shop);
+
+        if (!shopRecord || !shopRecord.access_token) {
+            return res.status(401).send("Shop not found");
+        }
+
+        req.shop = shop;
+        req.accessToken = shopRecord.access_token;
+
+        next();
+    } catch (error) {
+        console.error("Verify error:", error);
+        res.status(401).send("Invalid session token");
+    }
+}
 
 export default router;
