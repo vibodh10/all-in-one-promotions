@@ -2,7 +2,7 @@
 
 client_id = "c4b43eb51d6318e8af3400b6b5a7a264"
 name = "Oban All-in-one Offers"
-application_url = "https://all-in-one-promotions.onrender.com"
+application_url = "https://all-in-one-promotions-production.up.railway.app"
 embedded = true
 
 [build]
@@ -47,12 +47,12 @@ use_legacy_install_flow = false
 
 [auth]
 redirect_urls = [
-  "https://all-in-one-promotions.onrender.com/auth/callback",
-  "https://all-in-one-promotions.onrender.com/auth/shopify/callback"
+  "https://all-in-one-promotions-production.up.railway.app/auth/callback",
+  "https://all-in-one-promotions-production.up.railway.app/auth/shopify/callback"
 ]
 
 [app_proxy]
-url = "https://all-in-one-promotions.onrender.com"
+url = "https://all-in-one-promotions-production.up.railway.app"
 subpath = "promotions"
 prefix = "apps"
 

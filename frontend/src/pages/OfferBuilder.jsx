@@ -61,6 +61,7 @@ function OfferBuilder() {
         description: "",
         type: "quantity_break",
         products: [],
+        collections: [],
         targeting: {
             mode: "specific_products",
             excludeProducts: [],
@@ -91,6 +92,7 @@ function OfferBuilder() {
 
     const targetingModes = [
         { label: "Specific products", value: "specific_products" },
+        { label: "Products in selected collections", value: "specific_collections" },
         { label: "All products", value: "all" },
         { label: "All products except selected", value: "all_except_products" },
     ];
@@ -122,6 +124,30 @@ function OfferBuilder() {
 
             setOfferData((prev) => ({ ...prev, products: selected }));
             setErrors([]);
+        });
+
+        picker.dispatch(ResourcePicker.Action.OPEN);
+    }, [app]);
+
+    const openCollectionPicker = useCallback(() => {
+        const picker = ResourcePicker.create(app, {
+            resourceType: ResourcePicker.ResourceType.Collection,
+            options: {
+                selectMultiple: true,
+            },
+        });
+
+        picker.subscribe(ResourcePicker.Action.SELECT, (payload) => {
+
+            const selected = payload.selection.map((c) => ({
+                id: c.id,
+                title: c.title,
+            }));
+
+            setOfferData(prev => ({
+                ...prev,
+                collections: selected,
+            }));
         });
 
         picker.dispatch(ResourcePicker.Action.OPEN);
@@ -199,11 +225,24 @@ function OfferBuilder() {
 
         // Step 2: targeting (products)
         if (s === 2) {
+            console.log("MODE", offerData.targeting?.mode);
+            console.log("PRODUCTS", offerData.products);
+            console.log("COLLECTIONS", offerData.collections);
+
+            const mode = offerData.targeting?.mode;
+
             if (
-                offerData.targeting?.mode !== "all" &&
+                ["specific_products", "all_except_products"].includes(mode) &&
                 offerData.products.length === 0
             ) {
                 newErrors.push("Select at least one product");
+            }
+
+            if (
+                mode === "specific_collections" &&
+                offerData.collections.length === 0
+            ) {
+                newErrors.push("Select at least one collection");
             }
         }
 
@@ -281,7 +320,7 @@ function OfferBuilder() {
 
                 // Targeting
                 products: offerData.products.map((p) => p.id),
-                collections: [],
+                collections: offerData.collections.map(c => c.id),
 
                 // Discount config
                 discountType: offerData.discountType,
@@ -452,7 +491,7 @@ function OfferBuilder() {
                 )}
 
                 {/* ✅ If SPECIFIC → show picker */}
-                {offerData.targeting?.mode !== "all" && (
+                {(offerData.targeting?.mode === "specific_products" || offerData.targeting?.mode === "all_except_products") && (
                     <>
                         {offerData.products.length === 0 ? (
                             <EmptyState
@@ -496,6 +535,60 @@ function OfferBuilder() {
                     </>
                 )}
 
+
+                {offerData.targeting?.mode === "specific_collections" && (
+                    <>
+                        {offerData.collections.length === 0 ? (
+                            <EmptyState
+                                heading="Select collections for this offer"
+                                action={{
+                                    content: "Select Collections",
+                                    onAction: openCollectionPicker
+                                }}
+                                image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+                            >
+                                <p>
+                                    Choose collections that this offer should apply to.
+                                </p>
+                            </EmptyState>
+                        ) : (
+                            <>
+                                <Button onClick={openCollectionPicker}>
+                                    Add More Collections
+                                </Button>
+
+                                <ResourceList
+                                    resourceName={{
+                                        singular: "collection",
+                                        plural: "collections"
+                                    }}
+                                    items={offerData.collections}
+                                    renderItem={(item) => (
+                                        <ResourceItem id={item.id}>
+                                            <InlineStack align="space-between">
+                                                <Text>{item.title}</Text>
+
+                                                <Button
+                                                    plain
+                                                    icon={DeleteIcon}
+                                                    onClick={() =>
+                                                        setOfferData(prev => ({
+                                                            ...prev,
+                                                            collections:
+                                                                prev.collections.filter(
+                                                                    c => c.id !== item.id
+                                                                )
+                                                        }))
+                                                    }
+                                                />
+                                            </InlineStack>
+                                        </ResourceItem>
+                                    )}
+                                />
+                            </>
+                        )}
+                    </>
+                )}
             </BlockStack>
         </Card>
     );

@@ -101,9 +101,30 @@ class Offer {
       errors.push('Shop ID is required');
     }
 
-    if (this.targeting?.mode !== "all" && this.products.length === 0) {
-      errors.push('Select at least one product');
-    }
+      const mode = this.targeting?.mode || "specific_products";
+
+      switch (mode) {
+          case "all":
+              break;
+
+          case "specific_products":
+              if (this.products.length === 0) {
+                  errors.push("Select at least one product");
+              }
+              break;
+
+          case "specific_collections":
+              if (this.collections.length === 0) {
+                  errors.push("Select at least one collection");
+              }
+              break;
+
+          case "all_except_products":
+              if ((this.targeting?.excludeProducts || []).length === 0) {
+                  errors.push("Select at least one excluded product");
+              }
+              break;
+      }
 
     if (this.type === 'quantity_break' && this.tiers.length === 0) {
       errors.push('Quantity breaks require at least one tier');

@@ -43,7 +43,16 @@ async function getShopSettings(shop) {
    STOREFRONT (App Proxy)
 ====================================================== */
 router.get("/offers", async (req, res) => {
-  const { productId, shop } = req.query;
+    const {
+        productId,
+        shop,
+        collections
+    } = req.query;
+
+    const productCollections =
+        collections
+            ? collections.split(",")
+            : [];
 
   if (!productId || !shop) {
     return res.status(400).json({ error: "Missing productId or shop" });
@@ -62,6 +71,14 @@ router.get("/offers", async (req, res) => {
     const offers = allOffers.filter(o => {
 
       const mode = o.targeting?.mode || "specific_products";
+
+        if (mode === "specific_collections") {
+            return o.collections?.some(collectionId =>
+                productCollections.some(productCollection =>
+                    sameId(collectionId, productCollection)
+                )
+            );
+        }
 
       // ✅ ALL PRODUCTS
       if (mode === "all") return true;
