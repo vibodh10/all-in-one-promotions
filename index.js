@@ -21,6 +21,7 @@ import storeRoutes from "./routes/store.js";
 import settingsRoutes from "./routes/settings.js";
 import cronRoutes from "./routes/cron.js";
 import storefrontAnalytics from "./routes/storefrontAnalytics.js";
+import adminRoutes from "./routes/admin.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -78,6 +79,7 @@ app.use("/api/billing", verifyRequest, billingRoutes);
 app.use("/api/settings", verifyRequest, settingsRoutes);
 app.use("/cron", cronRoutes);
 app.use("/storefront/analytics", storefrontAnalytics);
+app.use("/api/admin", adminRoutes);
 
 
 // ✅ Frontend serving

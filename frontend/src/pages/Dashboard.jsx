@@ -4,7 +4,7 @@ import {
     Layout,
     Card,
     DataTable,
-    Badge,
+    Banner,
     Button,
     Text,
     BlockStack,
@@ -14,8 +14,6 @@ import {
 } from '@shopify/polaris';
 import { useNavigate } from 'react-router-dom';
 import api from "../api/axios.js";
-import {useAppBridge} from "@shopify/app-bridge-react";
-import {authenticatedFetch} from "@shopify/app-bridge-utils";
 
 function Dashboard() {
     const navigate = useNavigate();
@@ -23,10 +21,27 @@ function Dashboard() {
     const [metrics, setMetrics] = useState(null);
     const [topOffers, setTopOffers] = useState([]);
     const [showContent, setShowContent] = useState(false);
-    const app = useAppBridge();
+
+    const [tokenMigration, setTokenMigration] = useState({
+        checking: true,
+        migrating: false,
+        migrated: false,
+        migrationAllowed: false,
+        message: '',
+        error: ''
+    });
+
+    const [tokenVerification, setTokenVerification] = useState({
+        verifying: false,
+        success: false,
+        message: '',
+        shopName: '',
+        error: ''
+    });
 
     useEffect(() => {
         fetchDashboardData();
+        fetchTokenMigrationStatus();
     }, []);
 
     const fetchDashboardData = async () => {
@@ -50,6 +65,118 @@ function Dashboard() {
             setTimeout(() => {
                 setShowContent(true);
             }, 150);
+        }
+    };
+
+    const fetchTokenMigrationStatus = async () => {
+        try {
+            const response = await api.get(
+                '/admin/token-migration-status'
+            );
+
+            const data = response.data.data;
+
+            setTokenMigration((current) => ({
+                ...current,
+                checking: false,
+                migrated: Boolean(data.migrated),
+                migrationAllowed: Boolean(data.migrationAllowed),
+                error: ''
+            }));
+        } catch (error) {
+            console.error(
+                'Error checking token migration status:',
+                error
+            );
+
+            setTokenMigration((current) => ({
+                ...current,
+                checking: false,
+                error:
+                    error.response?.data?.error ||
+                    'Unable to check the Shopify access status.'
+            }));
+        }
+    };
+
+    const migrateExpiringOfflineToken = async () => {
+        setTokenMigration((current) => ({
+            ...current,
+            migrating: true,
+            message: '',
+            error: ''
+        }));
+
+        try {
+            const response = await api.post(
+                '/admin/migrate-expiring-token'
+            );
+
+            setTokenMigration((current) => ({
+                ...current,
+                migrating: false,
+                migrated: true,
+                message:
+                    response.data.message ||
+                    'Shopify access was successfully updated.',
+                error: ''
+            }));
+        } catch (error) {
+            console.error(
+                'Error migrating Shopify access token:',
+                error
+            );
+
+            setTokenMigration((current) => ({
+                ...current,
+                migrating: false,
+                error:
+                    error.response?.data?.error ||
+                    'The Shopify access update failed.'
+            }));
+        }
+    };
+
+
+    const verifyAccessToken = async () => {
+        setTokenVerification({
+            verifying: true,
+            success: false,
+            message: '',
+            shopName: '',
+            error: ''
+        });
+
+        try {
+            const response = await api.post(
+                '/admin/verify-access-token'
+            );
+
+            setTokenVerification({
+                verifying: false,
+                success: true,
+                message:
+                    response.data.message ||
+                    'The Shopify access token is valid.',
+                shopName:
+                    response.data.data?.shopName || '',
+                error: ''
+            });
+        } catch (error) {
+            console.error(
+                'Error verifying Shopify access token:',
+                error
+            );
+
+            setTokenVerification({
+                verifying: false,
+                success: false,
+                message: '',
+                shopName: '',
+                error:
+                    error.response?.data?.error ||
+                    'The Shopify access token could not be verified.'
+            });
         }
     };
 
@@ -81,6 +208,11 @@ function Dashboard() {
         formatCurrency(offer.revenue),
         formatPercent(offer.conversionRate)
     ]);
+
+    const showTokenMigrationCard =
+        !tokenMigration.checking &&
+        tokenMigration.migrationAllowed &&
+        (!tokenMigration.migrated || tokenMigration.message);
 
     return (
         <Page
@@ -145,8 +277,8 @@ function Dashboard() {
                         >
                             <BlockStack gap="500">
 
-                            {/* Getting Started */}
-                            {metrics?.totalOffers === 0 && (
+                                {/* Getting Started */}
+                                {metrics?.totalOffers === 0 && (
                                     <Card>
                                         <BlockStack gap="300">
                                             <Text variant="headingLg" as="h2">

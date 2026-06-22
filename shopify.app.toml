@@ -2,7 +2,7 @@
 
 client_id = "c4b43eb51d6318e8af3400b6b5a7a264"
 name = "Oban All-in-one Offers"
-application_url = "https://all-in-one-promotions.onrender.com"
+application_url = "https://all-in-one-promotions-production.up.railway.app"
 embedded = true
 
 [build]
@@ -12,47 +12,47 @@ automatically_update_urls_on_dev = true
 api_version = "2025-10"
 
   [[webhooks.subscriptions]]
-  uri = "/api/webhooks/customers/data_request"
+  uri = "https://all-in-one-promotions.onrender.com/api/webhooks/shop/update"
+  topics = [ "shop/update" ]
+
+  [[webhooks.subscriptions]]
+  uri = "https://all-in-one-promotions.onrender.com/api/webhooks/customers/data_request"
   compliance_topics = [ "customers/data_request" ]
 
   [[webhooks.subscriptions]]
-  uri = "/api/webhooks/customers/redact"
+  uri = "https://all-in-one-promotions.onrender.com/api/webhooks/customers/redact"
   compliance_topics = [ "customers/redact" ]
 
   [[webhooks.subscriptions]]
-  uri = "/api/webhooks/shop/redact"
+  uri = "https://all-in-one-promotions.onrender.com/api/webhooks/shop/redact"
   compliance_topics = [ "shop/redact" ]
 
   [[webhooks.subscriptions]]
-  topics = [ "products/update" ]
-  uri = "/api/webhooks/products/update"
-
-  [[webhooks.subscriptions]]
+  uri = "https://all-in-one-promotions.onrender.com/api/webhooks/app/uninstalled"
   topics = [ "app/uninstalled" ]
-  uri = "/api/webhooks/app/uninstalled"
 
   [[webhooks.subscriptions]]
-  topics = [ "shop/update" ]
-  uri = "/api/webhooks/shop/update"
-
-  [[webhooks.subscriptions]]
+  uri = "https://all-in-one-promotions.onrender.com/api/webhooks/products/delete"
   topics = [ "products/delete" ]
-  uri = "/api/webhooks/products/delete"
+
+  [[webhooks.subscriptions]]
+  uri = "https://all-in-one-promotions.onrender.com/api/webhooks/products/update"
+  topics = [ "products/update" ]
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "read_discounts,read_products,write_discounts,write_products"
+scopes = "read_discounts,write_discounts,read_products,write_products"
 optional_scopes = [ ]
 use_legacy_install_flow = false
 
 [auth]
 redirect_urls = [
-  "https://all-in-one-promotions.onrender.com/auth/callback",
-  "https://all-in-one-promotions.onrender.com/auth/shopify/callback"
+  "https://all-in-one-promotions-production.up.railway.app/auth/callback",
+  "https://all-in-one-promotions-production.up.railway.app/auth/shopify/callback"
 ]
 
 [app_proxy]
-url = "https://all-in-one-promotions.onrender.com"
+url = "https://all-in-one-promotions-production.up.railway.app"
 subpath = "promotions"
 prefix = "apps"
 

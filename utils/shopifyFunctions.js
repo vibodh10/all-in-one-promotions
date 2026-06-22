@@ -1,4 +1,5 @@
 import { getStoreDefaults } from "./shopifyStore.js";
+import {getValidOfflineAccessToken} from "./tokenManager.js";
 
 const API_VERSION = process.env.API_VERSION || "2026-01";
 
@@ -6,24 +7,69 @@ const API_VERSION = process.env.API_VERSION || "2026-01";
    GraphQL Helper
 ================================ */
 
-export async function shopifyGraphQL(shop, accessToken, query, variables) {
-  const res = await fetch(
+export async function shopifyGraphQL(
+    shop,
+    query,
+    variables = {}
+) {
+  if (!shop) {
+    throw new Error("Shop domain is required");
+  }
+
+  if (!query) {
+    throw new Error("GraphQL query is required");
+  }
+
+  const accessToken =
+      await getValidOfflineAccessToken(shop);
+
+  const response = await fetch(
       `https://${shop}/admin/api/${API_VERSION}/graphql.json`,
       {
         method: "POST",
         headers: {
           "X-Shopify-Access-Token": accessToken,
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
-        body: JSON.stringify({ query, variables }),
+        body: JSON.stringify({
+          query,
+          variables,
+        }),
       }
   );
 
-  const json = await res.json();
+  const requestId =
+      response.headers.get("x-request-id");
 
-  if (!res.ok || json.errors) {
-    console.error("Shopify GraphQL Error:", json);
-    throw new Error(JSON.stringify(json));
+  const json = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    console.error("Shopify GraphQL HTTP error:", {
+      shop,
+      status: response.status,
+      requestId,
+      response: json,
+    });
+
+    throw new Error(
+        json?.errors?.[0]?.message ||
+        `Shopify API request failed with status ${response.status}`
+    );
+  }
+
+  if (json?.errors?.length) {
+    console.error("Shopify GraphQL errors:", {
+      shop,
+      requestId,
+      errors: json.errors,
+    });
+
+    throw new Error(
+        json.errors
+            .map((error) => error.message)
+            .join("; ")
+    );
   }
 
   return json;
@@ -55,7 +101,6 @@ export async function createDiscount({ shop, accessToken }, offer) {
 
   await shopifyGraphQL(
       shop,
-      accessToken,
       metafieldMutation,
       {
         metafields: [
@@ -90,17 +135,6 @@ export async function createDiscount({ shop, accessToken }, offer) {
 
   /* ⭐ FIXED DISCOUNT VALUE SUPPORT */
 
-  let discountValue = null;
-
-  if (offer.discountType === "fixed") {
-    discountValue = {
-      fixedAmount: {
-        amount: offer.discountValue,
-        currencyCode: currencyCode
-      }
-    };
-  }
-
   const variables = {
     automaticAppDiscount: {
       title: offer.name || "Promotion",
@@ -122,17 +156,13 @@ export async function createDiscount({ shop, accessToken }, offer) {
         productDiscounts: true,
         orderDiscounts: true,
         shippingDiscounts: true
-      },
-
-      /* ⭐ attach value if fixed discount */
-      ...(discountValue && { value: discountValue })
+      }
 
     }
   };
 
   const response = await shopifyGraphQL(
       shop,
-      accessToken,
       mutation,
       variables
   );
@@ -175,7 +205,6 @@ export async function deleteDiscount({ shop, accessToken }, discountIds = []) {
 
       const response = await shopifyGraphQL(
           shop,
-          accessToken,
           mutation,
           { id }
       );

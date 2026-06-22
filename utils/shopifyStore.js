@@ -11,7 +11,7 @@ export async function getStoreDefaults(shop, accessToken, shopifyGraphQL) {
     }
   `;
 
-    const { data } = await shopifyGraphQL(shop, accessToken, query, {});
+    const { data } = await shopifyGraphQL(shop, query, {});
 
     return {
         shopId: data.shop.id,
