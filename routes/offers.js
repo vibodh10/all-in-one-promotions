@@ -14,16 +14,13 @@ import {
 import pool from "../utils/db.js";
 import { camelize } from "../utils/camelize.js";
 import { sendEmail } from "../utils/email.js";
+import {getValidOfflineAccessToken} from "../utils/tokenManager.js";
 
 /* ================================
    TOKEN HELPER (CRITICAL FIX)
 ================================ */
 export async function getAccessToken(shop) {
-  const result = await pool.query(
-      "SELECT access_token FROM shop_tokens WHERE shop = $1",
-      [shop]
-  );
-  return result.rows[0]?.access_token;
+  return await getValidOfflineAccessToken(shop);
 }
 
 /* ================================

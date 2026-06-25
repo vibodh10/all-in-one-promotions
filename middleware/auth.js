@@ -8,8 +8,10 @@ console.log("AUTH RESEND =", process.env.RESEND_API_KEY ? "FOUND" : "MISSING");
 import express from "express";
 import "@shopify/shopify-api/adapters/node";
 import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
-import database from "../utils/database.js";
 import pool from "../utils/db.js";
+import {
+    getValidOfflineAccessToken,
+} from "../utils/tokenManager.js";
 
 const router = express.Router();
 
@@ -100,55 +102,149 @@ router.get("/auth", async (req, res) => {
  */
 router.get("/auth/callback", async (req, res) => {
     try {
-        console.log("CALLBACK HIT");
+        console.log("AUTH CALLBACK HIT");
 
-        const callbackResponse = await shopify.auth.callback({
-            rawRequest: req,
-            rawResponse: res,
-        });
+        const callbackResponse =
+            await shopify.auth.callback({
+                rawRequest: req,
+                rawResponse: res,
+            });
 
         const session = callbackResponse.session;
+        const shop = session?.shop;
+        const oldAccessToken = session?.accessToken;
 
-        console.log("Session shop:", session?.shop);
-        console.log("Session token:", session?.accessToken);
-
-        if (!session?.shop || !session?.accessToken) {
-            throw new Error("Session missing shop or accessToken");
+        if (!shop) {
+            throw new Error(
+                "Missing shop from Shopify auth callback"
+            );
         }
+
+        if (!oldAccessToken) {
+            throw new Error(
+                "Missing offline access token from Shopify auth callback"
+            );
+        }
+
+        console.log(
+            "OAuth offline token received for:",
+            shop
+        );
+
+        /*
+         * Exchange the OAuth token immediately for an
+         * expiring offline access/refresh-token pair.
+         */
+        const exchanged =
+            await exchangeOfflineToken({
+                shop,
+                oldAccessToken,
+            });
+
+        console.log(
+            "Expiring offline token created for:",
+            shop
+        );
+
+        await pool.query(
+            `
+                INSERT INTO shop_tokens (
+                    shop,
+                    access_token,
+                    refresh_token,
+                    scope,
+                    access_token_expires_at,
+                    refresh_token_expires_at,
+                    token_type,
+                    migrated_at,
+                    updated_at
+                )
+                VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6,
+                    'expiring_offline',
+                    now(),
+                    now()
+                )
+                ON CONFLICT (shop)
+                DO UPDATE SET
+                    access_token =
+                        EXCLUDED.access_token,
+                    refresh_token =
+                        EXCLUDED.refresh_token,
+                    scope =
+                        EXCLUDED.scope,
+                    access_token_expires_at =
+                        EXCLUDED.access_token_expires_at,
+                    refresh_token_expires_at =
+                        EXCLUDED.refresh_token_expires_at,
+                    token_type =
+                        'expiring_offline',
+                    migrated_at =
+                        now(),
+                    updated_at =
+                        now()
+            `,
+            [
+                shop,
+                exchanged.accessToken,
+                exchanged.refreshToken,
+                exchanged.scope ||
+                session.scope ||
+                null,
+                exchanged.accessTokenExpiresAt,
+                exchanged.refreshTokenExpiresAt,
+            ]
+        );
+
+        await pool.query(
+            `
+                INSERT INTO shops (
+                    shop,
+                    isGrandfathered
+                )
+                VALUES ($1, true)
+                ON CONFLICT (shop)
+                DO NOTHING
+            `,
+            [shop]
+        );
+
+        /*
+         * registerWebhooks expects a Shopify session object.
+         * Replace the callback's old token with the newly
+         * exchanged expiring access token.
+         */
+        session.accessToken =
+            exchanged.accessToken;
+        session.expires =
+            exchanged.accessTokenExpiresAt;
+
+        await registerWebhooks(session);
 
         const host = req.query.host;
 
-        await pool.query(
-            `
-                insert into shop_tokens (shop, access_token, scope, updated_at)
-                values ($1, $2, $3, now())
-                    on conflict (shop)
-            do update set access_token = excluded.access_token,
-                                       scope = excluded.scope,
-                                       updated_at = now()
-            `,
-            [session.shop, session.accessToken, session.scope || null]
-        );
-
-        await pool.query(
-            `
-                INSERT INTO shops (shop, isGrandfathered)
-                VALUES ($1, true)
-                ON CONFLICT (shop) DO NOTHING
-            `,
-            [session.shop]
-        );
-
-        // AFTER saving token
-        await registerWebhooks(session);
-
         return res.redirect(
-            `/frontend/?shop=${encodeURIComponent(session.shop)}&host=${encodeURIComponent(host)}`
+            `/frontend/?shop=${encodeURIComponent(shop)}` +
+            `&host=${encodeURIComponent(host || "")}`
+        );
+    } catch (error) {
+        console.error(
+            "Auth callback failed:",
+            error
         );
 
-    } catch (err) {
-        console.error("Auth callback error:", err);
-        res.status(500).json({ error: "OAuth callback failed" });
+        return res.status(500).json({
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "OAuth callback failed",
+        });
     }
 });
 
@@ -156,33 +252,6 @@ router.get("/auth/callback", async (req, res) => {
  * Verify middleware for API routes
  * ✅ Reads access token from DB every time.
  */
-// export async function verifyRequest(req, res, next) {
-//     try {
-//         const shop =
-//             req.query.shop ||
-//             req.headers["x-shopify-shop-domain"];
-//
-//         if (!shop) {
-//             return res.status(401).send("Missing shop");
-//         }
-//
-//         const shopRecord = await database.getShopByDomain(shop);
-//
-//         if (!shopRecord || !shopRecord.access_token) {
-//             console.log("⚠️ No token found, redirecting to auth:", shop);
-//             return res.redirect(`/auth?shop=${encodeURIComponent(shop)}`);
-//         }
-//
-//         req.shop = shop;
-//         req.accessToken = shopRecord.access_token;
-//
-//         next();
-//     } catch (error) {
-//         console.error("Verify error:", error);
-//         res.status(500).send("Auth error");
-//     }
-// }
-
 export async function verifyRequest(req, res, next) {
     try {
         const authHeader = req.headers.authorization;
@@ -191,7 +260,24 @@ export async function verifyRequest(req, res, next) {
             return res.status(401).send("Missing Authorization header");
         }
 
-        const token = authHeader.replace("Bearer ", "");
+        if (
+            !authHeader ||
+            !authHeader.toLowerCase().startsWith("bearer ")
+        ) {
+            return res.status(401).json({
+                success: false,
+                error: "Missing Authorization header",
+            });
+        }
+
+        const token = authHeader.slice(7).trim();
+
+        if (!token) {
+            return res.status(401).json({
+                success: false,
+                error: "Missing Shopify session token",
+            });
+        }
 
         // ✅ Decode and verify session token
         const decoded = await shopify.session.decodeSessionToken(token);
@@ -200,14 +286,12 @@ export async function verifyRequest(req, res, next) {
         const shop = decoded.dest.replace("https://", "");
 
         // 🔑 Get offline access token from DB (your existing system)
-        const shopRecord = await database.getShopByDomain(shop);
-
-        if (!shopRecord || !shopRecord.access_token) {
-            return res.status(401).send("Shop not found");
-        }
+        const accessToken = await getValidOfflineAccessToken(shop);
 
         req.shop = shop;
-        req.accessToken = shopRecord.access_token;
+        req.accessToken = accessToken;
+        req.sessionToken = token;
+        req.sessionTokenPayload = decoded;
 
         next();
     } catch (error) {
