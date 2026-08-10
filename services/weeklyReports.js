@@ -60,7 +60,7 @@ export async function sendWeeklyReports() {
     `;
 
         const result = await resend.emails.send({
-            from: "onboarding@resend.dev",
+            from: "hello@gl6.com",
             to: shop.email,
             subject: "Your Weekly Offer Performance Report",
             html
