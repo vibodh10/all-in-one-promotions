@@ -10,6 +10,7 @@ import {
   updateDiscount,
   deleteDiscount,
   disableDiscount,
+  isDiscountSafeToPromote,
 } from "../utils/shopifyFunctions.js";
 import pool from "../utils/db.js";
 import { camelize } from "../utils/camelize.js";
@@ -72,6 +73,31 @@ router.get("/offers", async (req, res) => {
       return o.products?.some(p => sameId(p, productId));
     });
 
+    const rolloutAwareOffers = [];
+
+    for (const offer of offers) {
+      const discountIds =
+        offer.shopify_discount_ids ||
+        offer.shopifyDiscountIds ||
+        [];
+
+      // Preserve legacy records that do not yet have a Shopify discount ID.
+      if (!Array.isArray(discountIds) || discountIds.length === 0) {
+        rolloutAwareOffers.push(offer);
+        continue;
+      }
+
+      const visibilityChecks = await Promise.all(
+        discountIds.map((discountId) =>
+          isDiscountSafeToPromote(shop, discountId)
+        )
+      );
+
+      if (visibilityChecks.every(Boolean)) {
+        rolloutAwareOffers.push(offer);
+      }
+    }
+
     const settingsResult = await pool.query(
         `SELECT show_branding, enable_animations
          FROM shop_settings
@@ -81,7 +107,7 @@ router.get("/offers", async (req, res) => {
 
     const settings = settingsResult.rows[0] || {};
 
-    res.json({ offers, settings });
+    res.json({ offers: rolloutAwareOffers, settings });
   } catch (err) {
     console.error("Error fetching offers:", err);
     res.status(500).json({ error: "Failed to load offers" });
