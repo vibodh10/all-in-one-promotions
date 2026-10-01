@@ -185,7 +185,7 @@ Set these variables in your production environment:
 # Shopify Configuration
 SHOPIFY_API_KEY=your_api_key
 SHOPIFY_API_SECRET=your_api_secret
-SHOPIFY_SCOPES=write_products,read_products,write_discounts,read_discounts
+SHOPIFY_SCOPES=write_products,read_products,write_discounts,read_discounts,read_rollouts
 
 # App Configuration
 APP_URL=https://your-production-url.com
