@@ -1,7 +1,7 @@
 import { getStoreDefaults } from "./shopifyStore.js";
 import {getValidOfflineAccessToken} from "./tokenManager.js";
 
-const API_VERSION = process.env.API_VERSION || "2026-01";
+const API_VERSION = process.env.API_VERSION || "2026-10";
 
 /* ================================
    GraphQL Helper
@@ -263,4 +263,138 @@ export async function updateDiscount(context, offer) {
   const result = await createDiscount(context, offer);
 
   return result;
+}
+
+/* ================================
+   DISCOUNT ROLLOUT VISIBILITY
+================================ */
+
+export async function isDiscountSafeToPromote(shop, discountId) {
+  if (!shop || !discountId) return false;
+
+  const scopesQuery = `
+    query CurrentAppScopes {
+      currentAppInstallation {
+        accessScopes {
+          handle
+        }
+      }
+    }
+  `;
+
+  try {
+    const scopeResponse = await shopifyGraphQL(shop, scopesQuery);
+    const scopes =
+      scopeResponse?.data?.currentAppInstallation?.accessScopes?.map(
+        (scope) => scope.handle
+      ) || [];
+
+    // Existing installations may not have granted the new scope yet.
+    // Preserve current storefront behaviour until reauthorization occurs.
+    if (!scopes.includes("read_rollouts")) {
+      console.warn("read_rollouts scope not granted yet; skipping rollout check", {
+        shop,
+        discountId,
+      });
+      return true;
+    }
+
+    const changeFilter = `discount_id:'${discountId}'`;
+
+    const query = `
+      query DiscountRolloutVisibility($id: ID!, $changeFilter: String!) {
+        discountNode(id: $id) {
+          discount {
+            ... on DiscountAutomaticApp {
+              status
+              rollouts(first: 10, query: "status:ACTIVE") {
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                }
+                nodes {
+                  id
+                  status
+                  effectiveTrafficAllocation
+                  treatments {
+                    id
+                    split
+                    changes(first: 20, query: $changeFilter) {
+                      pageInfo {
+                        hasNextPage
+                        endCursor
+                      }
+                      nodes {
+                        __typename
+                        ... on RolloutDiscountChange {
+                          discount {
+                            id
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const response = await shopifyGraphQL(shop, query, {
+      id: discountId,
+      changeFilter,
+    });
+
+    const discount = response?.data?.discountNode?.discount;
+    if (!discount) return false;
+
+    const rollouts = discount?.rollouts;
+    if (!rollouts) return true;
+
+    // If Shopify paginates the active rollout list, fail closed rather than
+    // advertising a discount without the full effective-availability picture.
+    if (rollouts.pageInfo?.hasNextPage) return false;
+
+    const activeRollouts = rollouts.nodes || [];
+    if (!activeRollouts.length) return true;
+
+    return activeRollouts.every((rollout) => {
+      if (Number(rollout.effectiveTrafficAllocation) !== 100) {
+        return false;
+      }
+
+      const treatments = rollout.treatments || [];
+
+      for (const treatment of treatments) {
+        if (treatment?.changes?.pageInfo?.hasNextPage) {
+          return false;
+        }
+      }
+
+      // Shopify documents this as the simple safe case for buyer-facing
+      // promotion: 100% effective allocation and one 100%-split treatment
+      // that activates this discount.
+      return treatments.some((treatment) => {
+        if (Number(treatment.split) !== 100) return false;
+
+        return (treatment?.changes?.nodes || []).some(
+          (change) =>
+            change?.__typename === "RolloutDiscountActivateChange" &&
+            change?.discount?.id === discountId
+        );
+      });
+    });
+  } catch (error) {
+    console.error("Failed to determine discount rollout visibility:", {
+      shop,
+      discountId,
+      error: error?.message || error,
+    });
+
+    // Once rollout access is granted, uncertainty must not result in an offer
+    // being advertised to buyers who might not receive it.
+    return false;
+  }
 }
