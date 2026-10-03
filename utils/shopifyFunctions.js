@@ -75,11 +75,37 @@ export async function shopifyGraphQL(
   return json;
 }
 
+function getDiscountSchedule(offer) {
+  const startValue = offer?.schedule?.startDate;
+  const endValue = offer?.schedule?.endDate;
+
+  const start = startValue ? new Date(startValue) : new Date();
+  if (Number.isNaN(start.getTime())) {
+    throw new Error("Invalid offer start date");
+  }
+
+  const end = endValue ? new Date(endValue) : null;
+  if (end && Number.isNaN(end.getTime())) {
+    throw new Error("Invalid offer end date");
+  }
+
+  if (end && end <= start) {
+    throw new Error("Offer end date must be after its start date");
+  }
+
+  return {
+    startsAt: start.toISOString(),
+    endsAt: end ? end.toISOString() : null,
+  };
+}
+
 /* ================================
    CREATE FUNCTION DISCOUNT
 ================================ */
 
 export async function createDiscount({ shop, accessToken }, offer) {
+
+  const { startsAt, endsAt } = getDiscountSchedule(offer);
 
   /* ⭐ GET STORE DEFAULT CURRENCY */
 
@@ -141,7 +167,8 @@ export async function createDiscount({ shop, accessToken }, offer) {
 
       functionHandle: "promotions-discount",
 
-      startsAt: new Date().toISOString(),
+      startsAt,
+      ...(endsAt ? { endsAt } : {}),
 
       metafields: [
         {
