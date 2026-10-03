@@ -472,7 +472,7 @@ router.patch("/:id/status", verifyRequest, async (req, res) => {
         endDate,
       };
 
-      const result = await createDiscount(
+      const result = await updateDiscount(
         { shop, accessToken },
         {
           ...offer,
