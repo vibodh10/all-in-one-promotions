@@ -91,6 +91,7 @@ async function updateOffer(id, updates) {
         "bundle_config",
         "display_settings",
         "styling",
+        "schedule",
         "shopify_discount_ids"
     ]);
 
@@ -106,6 +107,7 @@ async function updateOffer(id, updates) {
         "bundle_config",
         "display_settings",
         "styling",
+        "schedule",
         "status",
         "shopify_discount_ids"
     ]);
