@@ -377,6 +377,10 @@ export async function isDiscountSafeToPromote(shop, discountId) {
     const discount = response?.data?.discountNode?.discount;
     if (!discount) return false;
 
+    // Shopify is the source of truth for scheduled activation/expiry.
+    // Do not advertise the offer until Shopify reports the discount ACTIVE.
+    if (discount.status !== "ACTIVE") return false;
+
     const rollouts = discount?.rollouts;
     if (!rollouts) return true;
 
