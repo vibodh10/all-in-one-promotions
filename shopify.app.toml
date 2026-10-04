@@ -9,7 +9,7 @@ embedded = true
 automatically_update_urls_on_dev = true
 
 [webhooks]
-api_version = "2025-10"
+api_version = "2026-10"
 
   [[webhooks.subscriptions]]
   uri = "https://all-in-one-promotions.onrender.com/api/webhooks/shop/update"

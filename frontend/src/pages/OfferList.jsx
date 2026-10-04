@@ -29,6 +29,15 @@ function OfferList() {
 
     const [deleteModal, setDeleteModal] = useState(false);
     const [offerToDelete, setOfferToDelete] = useState(null);
+    const [now, setNow] = useState(() => new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setNow(new Date());
+        }, 30000);
+
+        return () => clearInterval(timer);
+    }, []);
 
     useEffect(() => {
         fetchOffers();
@@ -160,11 +169,26 @@ function OfferList() {
         return typeMap[type] || type;
     };
 
-    const rows = offers.map((offer) => [
+    const getEffectiveStatus = (offer) => {
+        if (offer.status !== 'scheduled') return offer.status;
+
+        const start = offer.schedule?.startDate ? new Date(offer.schedule.startDate) : null;
+        const end = offer.schedule?.endDate ? new Date(offer.schedule.endDate) : null;
+
+        if (end && !Number.isNaN(end.getTime()) && now >= end) return 'paused';
+        if (!start || Number.isNaN(start.getTime()) || now >= start) return 'active';
+
+        return 'scheduled';
+    };
+
+    const rows = offers.map((offer) => {
+        const effectiveStatus = getEffectiveStatus(offer);
+
+        return [
 
         offer.name,
         getOfferTypeLabel(offer.type),
-        getStatusBadge(offer.status),
+        getStatusBadge(effectiveStatus),
 
         <ButtonGroup>
 
@@ -172,7 +196,7 @@ function OfferList() {
                 Edit
             </Button>
 
-            {offer.status === 'active' ? (
+            {effectiveStatus === 'active' ? (
                 <Button
                     size="slim"
                     onClick={() => handleStatusChange(offer.id, 'paused')}
@@ -206,7 +230,8 @@ function OfferList() {
 
         </ButtonGroup>
 
-    ]);
+        ];
+    });
 
     if (loading) {
 

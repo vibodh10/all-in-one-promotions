@@ -131,31 +131,31 @@ function Analytics() {
             value: formatNumber(metrics.totalClicks),
             description: 'User interactions with offers'
         },
-        {
-            title: 'Total Conversions',
-            value: formatNumber(metrics.totalConversions),
-            description: 'Completed purchases'
-        },
-        {
-            title: 'Total Revenue',
-            value: formatCurrency(metrics.totalRevenue),
-            description: 'Generated from offers'
-        },
+        // {
+        //     title: 'Total Conversions',
+        //     value: formatNumber(metrics.totalConversions),
+        //     description: 'Completed purchases'
+        // },
+        // // {
+        //     title: 'Total Revenue',
+        //     value: formatCurrency(metrics.totalRevenue),
+        //     description: 'Generated from offers'
+        // },
         {
             title: 'Click-Through Rate',
             value: formatPercent(metrics.clickThroughRate),
             description: 'Clicks / Impressions'
         },
-        {
-            title: 'Conversion Rate',
-            value: formatPercent(metrics.conversionRate),
-            description: 'Conversions / Impressions'
-        },
-        {
-            title: 'Average Order Value',
-            value: formatCurrency(metrics.averageOrderValue),
-            description: 'Per converted order'
-        }
+        // {
+        //     title: 'Conversion Rate',
+        //     value: formatPercent(metrics.conversionRate),
+        //     description: 'Conversions / Impressions'
+        // },
+        // {
+        //     title: 'Average Order Value',
+        //     value: formatCurrency(metrics.averageOrderValue),
+        //     description: 'Per converted order'
+        // }
     ] : [];
 
     const offerRows = metrics?.topPerformingOffers?.map(offer => [

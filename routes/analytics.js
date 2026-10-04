@@ -149,7 +149,43 @@ router.get('/dashboard', async (req, res) => {
     }
 
     // Get all offers
-    const offers = await database.getOffers({ shopId, status: 'active' });
+      const allOffers = await database.getOffers({ shopId });
+
+      const now = new Date();
+
+      const offers = allOffers.filter((offer) => {
+          if (offer.status === 'active') {
+              const end = offer.schedule?.endDate
+                  ? new Date(offer.schedule.endDate)
+                  : null;
+
+              return !end || Number.isNaN(end.getTime()) || now < end;
+          }
+
+          if (offer.status === 'scheduled') {
+              const start = offer.schedule?.startDate
+                  ? new Date(offer.schedule.startDate)
+                  : null;
+
+              const end = offer.schedule?.endDate
+                  ? new Date(offer.schedule.endDate)
+                  : null;
+
+              const hasStarted =
+                  !start ||
+                  Number.isNaN(start.getTime()) ||
+                  now >= start;
+
+              const hasNotEnded =
+                  !end ||
+                  Number.isNaN(end.getTime()) ||
+                  now < end;
+
+              return hasStarted && hasNotEnded;
+          }
+
+          return false;
+      });
 
     // Get all events in date range
     const events = await database.getAnalyticsEvents({
