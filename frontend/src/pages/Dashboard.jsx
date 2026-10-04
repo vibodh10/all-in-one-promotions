@@ -195,9 +195,9 @@ function Dashboard() {
         { title: 'Active Offers', value: metrics?.totalOffers || 0 },
         { title: 'Impressions', value: metrics?.totalImpressions || 0 },
         { title: 'Clicks', value: metrics?.totalClicks || 0 },
-        { title: 'Conversions', value: metrics?.totalConversions || 0 },
-        { title: 'Revenue', value: formatCurrency(metrics?.totalRevenue || 0) },
-        { title: 'Conversion Rate', value: formatPercent(metrics?.conversionRate || 0) }
+        // { title: 'Conversions', value: metrics?.totalConversions || 0 },
+        // { title: 'Revenue', value: formatCurrency(metrics?.totalRevenue || 0) },
+        // { title: 'Conversion Rate', value: formatPercent(metrics?.conversionRate || 0) }
     ];
 
     const offerRows = topOffers.map(offer => [

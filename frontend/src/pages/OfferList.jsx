@@ -29,6 +29,15 @@ function OfferList() {
 
     const [deleteModal, setDeleteModal] = useState(false);
     const [offerToDelete, setOfferToDelete] = useState(null);
+    const [now, setNow] = useState(() => new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setNow(new Date());
+        }, 30000);
+
+        return () => clearInterval(timer);
+    }, []);
 
     useEffect(() => {
         fetchOffers();
@@ -163,7 +172,6 @@ function OfferList() {
     const getEffectiveStatus = (offer) => {
         if (offer.status !== 'scheduled') return offer.status;
 
-        const now = new Date();
         const start = offer.schedule?.startDate ? new Date(offer.schedule.startDate) : null;
         const end = offer.schedule?.endDate ? new Date(offer.schedule.endDate) : null;
 
