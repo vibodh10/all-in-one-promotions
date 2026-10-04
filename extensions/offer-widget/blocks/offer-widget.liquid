@@ -5,12 +5,12 @@
   <div
     id="smart-offer-root-{{ section.id }}"
     class="smart-offer"
+    style="display:none;"
     data-variant-id="{{ variant_id }}"
     data-product-gid="gid://shopify/Product/{{ product.id }}"
     data-price="{{ variant_price }}"
     data-shop="{{ shop.permanent_domain }}"
     data-unit-label="{{ block.settings.unit_label | escape }}">
-    <div class="smart-offer__loading">Loading offer…</div>
   </div>
 
   <style>
@@ -82,16 +82,6 @@
     text-align:right;
   }
 
-  .smart-offer__empty{
-    border:1px dashed rgba(0,0,0,.15);
-    border-radius:12px;
-    padding:16px;
-    text-align:center;
-    font-size:14px;
-    opacity:.65;
-    background:rgba(0,0,0,.02);
-  }
-
   .smart-offer__pricing{
     border:1px solid rgba(0,0,0,.08);
     border-radius:10px;
@@ -152,7 +142,6 @@
     const productGid = root.dataset.productGid;
     const shop = root.dataset.shop;
 
-    // ✅ NEW
     const unitLabel = root.dataset.unitLabel || "packs";
 
     function trackEvent(eventName, offerId, metadata = {}) {
@@ -175,18 +164,14 @@
     let settings = {
       enableAnimations: true,
       showBranding: true
-    }
+    };
 
     fetch(`/apps/promotions/storefront/offers?productId=${encodeURIComponent(productGid)}&shop=${encodeURIComponent(shop)}`)
       .then(res => res.json())
       .then(data => {
 
         if (!data || !data.offers || !data.offers.length) {
-         root.innerHTML = `
-           <div class="smart-offer__empty">
-             No active offer yet.
-           </div>
-         `;
+          root.style.display = "none";
           return;
         }
 
@@ -194,54 +179,77 @@
 
         const offer = data.offers[0];
 
-        const observer = new IntersectionObserver(entries => {
-
-          if (entries[0].isIntersecting) {
-
-            trackEvent("offer_view", offer.id);
-
-            observer.disconnect();
-
-          }
-
-        });
-
-        observer.observe(root);
-
-        if (settings.enableAnimations) {
-
-          root.style.opacity = "0";
-          root.style.transform = "translateY(10px)";
-
-          setTimeout(()=>{
-            root.style.transition = "all .35s ease";
-            root.style.opacity = "1";
-            root.style.transform = "translateY(0)";
-          },50);
-
-        }
-
         if (offer.type === "bundle") {
           renderBundle(offer);
+          setupOfferTracking(offer);
           return;
         }
 
-        if (offer.type === "volume_discount" || offer.type === "quantity_break") {
+        if (
+          offer.type === "volume_discount" ||
+          offer.type === "quantity_break"
+        ) {
           renderTierOffer(offer);
+          setupOfferTracking(offer);
           return;
         }
 
-        root.innerHTML = "";
+        root.style.display = "none";
 
       })
       .catch(err => {
         console.error("Offer fetch error:", err);
-        root.innerHTML = "";
+        root.style.display = "none";
       });
+
+    function setupOfferTracking(offer) {
+
+      const observer = new IntersectionObserver(entries => {
+
+        if (entries[0].isIntersecting) {
+
+          trackEvent("offer_view", offer.id);
+
+          observer.disconnect();
+
+        }
+
+      });
+
+      observer.observe(root);
+
+    }
+
+    function revealWidget() {
+
+      if (settings.enableAnimations) {
+
+        root.style.opacity = "0";
+        root.style.transform = "translateY(10px)";
+        root.style.display = "";
+
+        requestAnimationFrame(() => {
+
+          root.style.transition = "opacity .35s ease, transform .35s ease";
+          root.style.opacity = "1";
+          root.style.transform = "translateY(0)";
+
+        });
+
+      } else {
+
+        root.style.display = "";
+        root.style.opacity = "";
+        root.style.transform = "";
+
+      }
+
+    }
 
     function renderBundle(offer){
 
       const currency = window.Shopify?.currency?.active || "GBP";
+
       const money = new Intl.NumberFormat(undefined,{
         style:"currency",
         currency
@@ -257,7 +265,9 @@
       const deal = retail - savings;
 
       root.innerHTML = `
-        <div class="smart-offer__title">${offer.name || "Bundle & Save"}</div>
+        <div class="smart-offer__title">
+          ${offer.name || "Bundle & Save"}
+        </div>
 
         <p class="smart-offer__desc">
           Buy ${quantity}+ ${unitLabel} and save ${offer.discountValue || 0}%
@@ -266,32 +276,55 @@
         <div class="smart-offer__pricing">
 
           <div class="smart-offer__row smart-offer__retail">
-            <span class="smart-offer__label">Retail Price:</span>
-            <span class="smart-offer__value">${money.format(retail)}</span>
+            <span class="smart-offer__label">
+              Retail Price:
+            </span>
+
+            <span class="smart-offer__value">
+              ${money.format(retail)}
+            </span>
           </div>
 
           <div class="smart-offer__row smart-offer__savings">
-            <span class="smart-offer__label">Savings:</span>
-            <span class="smart-offer__value">-${money.format(savings)}</span>
+            <span class="smart-offer__label">
+              Savings:
+            </span>
+
+            <span class="smart-offer__value">
+              -${money.format(savings)}
+            </span>
           </div>
 
           <div class="smart-offer__row smart-offer__deal">
-            <span class="smart-offer__label">Deal price:</span>
-            <span class="smart-offer__value">${money.format(deal)}</span>
+            <span class="smart-offer__label">
+              Deal price:
+            </span>
+
+            <span class="smart-offer__value">
+              ${money.format(deal)}
+            </span>
           </div>
 
         </div>
 
-        ${settings.showBranding ? `<div class="smart-offer-brand">Powered by Oban Offers</div>` : ""}
+        ${
+          settings.showBranding
+            ? `<div class="smart-offer-brand">Powered by Oban Offers</div>`
+            : ""
+        }
       `;
+
+      revealWidget();
     }
 
     function renderTierOffer(offer){
 
-      const tiers = Array.isArray(offer.tiers) ? offer.tiers : [];
+      const tiers = Array.isArray(offer.tiers)
+        ? offer.tiers
+        : [];
 
       if (!tiers.length){
-        root.innerHTML = "";
+        root.style.display = "none";
         return;
       }
 
@@ -305,34 +338,62 @@
       const price = Number(root.dataset.price) / 100;
 
       const tierHTML = tiers.map((tier,index)=>{
+
         return `
           <li class="smart-offer__tier">
             <label>
-              <input type="radio" name="smart-tier" value="${tier.quantity}" data-discount="${tier.discount}" ${index===0?"checked":""}>
-              <span>Buy ${tier.quantity}+ ${unitLabel}</span>
-              <strong>Save ${tier.discount}%</strong>
+              <input
+                type="radio"
+                name="smart-tier"
+                value="${tier.quantity}"
+                data-discount="${tier.discount}"
+                ${index === 0 ? "checked" : ""}
+              >
+
+              <span>
+                Buy ${tier.quantity}+ ${unitLabel}
+              </span>
+
+              <strong>
+                Save ${tier.discount}%
+              </strong>
             </label>
           </li>
         `;
+
       }).join("");
 
       const branding = settings.showBranding
-        ? `<div class="smart-offer-brand">Powered by Oban All-in-one Offers</div>`
+        ? `<div class="smart-offer-brand">
+             Powered by Oban All-in-one Offers
+           </div>`
         : "";
 
       root.innerHTML = `
-        <div class="smart-offer__title">${offer.name || "Special Offer"}</div>
+        <div class="smart-offer__title">
+          ${offer.name || "Special Offer"}
+        </div>
 
-        <ul class="smart-offer__tiers">${tierHTML}</ul>
+        <ul class="smart-offer__tiers">
+          ${tierHTML}
+        </ul>
 
-        <div id="smart-offer-pricing" class="smart-offer__pricing"></div>
+        <div
+          id="smart-offer-pricing"
+          class="smart-offer__pricing">
+        </div>
 
-        <button id="smart-offer-btn" class="smart-offer__btn">Add to cart</button>
+        <button
+          id="smart-offer-btn"
+          class="smart-offer__btn">
+          Add to cart
+        </button>
 
         ${branding}
       `;
 
-      const pricingBox = document.getElementById("smart-offer-pricing");
+      const pricingBox =
+        root.querySelector("#smart-offer-pricing");
 
       function roundMoney(value) {
         return Math.round(value * 100) / 100;
@@ -340,14 +401,20 @@
 
       function updatePricing(){
 
-        const selected = root.querySelector('input[name="smart-tier"]:checked');
+        const selected =
+          root.querySelector(
+            'input[name="smart-tier"]:checked'
+          );
+
         if (!selected) return;
 
         const quantity = Number(selected.value);
-        const discount = Number(selected.dataset.discount) / 100;
+        const discount =
+          Number(selected.dataset.discount) / 100;
 
         let retail = price * quantity;
-        let savings, deal;
+        let savings;
+        let deal;
 
         if (offer.type === "volume_discount") {
 
@@ -356,52 +423,97 @@
 
         } else if (offer.type === "quantity_break") {
 
-          const discountedUnit = price * (1 - discount);
+          const discountedUnit =
+            price * (1 - discount);
+
           deal = discountedUnit * quantity;
           savings = retail - deal;
 
         }
 
         retail = roundMoney(retail);
-        deal = Math.round((price * quantity * (1 - discount)) * 100) / 100;
+
+        deal = Math.round(
+          (price * quantity * (1 - discount)) * 100
+        ) / 100;
+
         savings = roundMoney(retail - deal);
 
         pricingBox.innerHTML = `
           <div class="smart-offer__row smart-offer__retail">
-            <span class="smart-offer__label">Retail price:</span>
-            <span class="smart-offer__value">
-              ${money.format(retail)} (For ${quantity} ${unitLabel})
+
+            <span class="smart-offer__label">
+              Retail price:
             </span>
+
+            <span class="smart-offer__value">
+              ${money.format(retail)}
+              (For ${quantity} ${unitLabel})
+            </span>
+
           </div>
 
           <div class="smart-offer__row smart-offer__savings">
-            <span class="smart-offer__label">Savings:</span>
-            <span class="smart-offer__value">-${money.format(savings)}</span>
+
+            <span class="smart-offer__label">
+              Savings:
+            </span>
+
+            <span class="smart-offer__value">
+              -${money.format(savings)}
+            </span>
+
           </div>
 
           <div class="smart-offer__row smart-offer__deal">
-            <span class="smart-offer__label">Deal price:</span>
-            <span class="smart-offer__value">${money.format(deal)}</span>
+
+            <span class="smart-offer__label">
+              Deal price:
+            </span>
+
+            <span class="smart-offer__value">
+              ${money.format(deal)}
+            </span>
+
           </div>
         `;
       }
 
-      root.querySelectorAll('input[name="smart-tier"]').forEach(input=>{
-        input.addEventListener("change", updatePricing);
-      });
+      root
+        .querySelectorAll(
+          'input[name="smart-tier"]'
+        )
+        .forEach(input => {
+
+          input.addEventListener(
+            "change",
+            updatePricing
+          );
+
+        });
 
       updatePricing();
 
-      const btn = document.getElementById("smart-offer-btn");
+      const btn =
+        root.querySelector("#smart-offer-btn");
 
       btn.addEventListener("click", async () => {
 
-        const selected = root.querySelector('input[name="smart-tier"]:checked');
+        const selected =
+          root.querySelector(
+            'input[name="smart-tier"]:checked'
+          );
+
         if (!selected) return;
 
-        const quantity = Number(selected.value);
+        const quantity =
+          Number(selected.value);
 
-        trackEvent("offer_click", offer.id, { quantity });
+        trackEvent(
+          "offer_click",
+          offer.id,
+          { quantity }
+        );
 
         btn.disabled = true;
         btn.textContent = "Adding...";
@@ -410,27 +522,45 @@
 
           await fetch("/cart/add.js",{
             method:"POST",
+
             headers:{
               "Content-Type":"application/json",
               "Accept":"application/json"
             },
+
             body:JSON.stringify({
-              items:[{ id:Number(variantId), quantity }]
+              items:[
+                {
+                  id:Number(variantId),
+                  quantity
+                }
+              ]
             })
           });
 
-          trackEvent("offer_applied", offer.id, { quantity });
+          trackEvent(
+            "offer_applied",
+            offer.id,
+            { quantity }
+          );
 
           window.location.href="/cart";
 
-        }catch(err){
+        } catch(err) {
 
-          btn.disabled=false;
-          btn.textContent="Add to cart";
+          console.error(
+            "Add to cart error:",
+            err
+          );
+
+          btn.disabled = false;
+          btn.textContent = "Add to cart";
 
         }
 
       });
+
+      revealWidget();
     }
 
   })();

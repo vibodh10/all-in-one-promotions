@@ -75,37 +75,11 @@ export async function shopifyGraphQL(
   return json;
 }
 
-function getDiscountSchedule(offer) {
-  const startValue = offer?.schedule?.startDate;
-  const endValue = offer?.schedule?.endDate;
-
-  const start = startValue ? new Date(startValue) : new Date();
-  if (Number.isNaN(start.getTime())) {
-    throw new Error("Invalid offer start date");
-  }
-
-  const end = endValue ? new Date(endValue) : null;
-  if (end && Number.isNaN(end.getTime())) {
-    throw new Error("Invalid offer end date");
-  }
-
-  if (end && end <= start) {
-    throw new Error("Offer end date must be after its start date");
-  }
-
-  return {
-    startsAt: start.toISOString(),
-    endsAt: end ? end.toISOString() : null,
-  };
-}
-
 /* ================================
    CREATE FUNCTION DISCOUNT
 ================================ */
 
 export async function createDiscount({ shop, accessToken }, offer) {
-
-  const { startsAt, endsAt } = getDiscountSchedule(offer);
 
   /* ⭐ GET STORE DEFAULT CURRENCY */
 
@@ -167,8 +141,7 @@ export async function createDiscount({ shop, accessToken }, offer) {
 
       functionHandle: "promotions-discount",
 
-      startsAt,
-      ...(endsAt ? { endsAt } : {}),
+      startsAt: new Date().toISOString(),
 
       metafields: [
         {
@@ -297,9 +270,9 @@ export async function updateDiscount(context, offer) {
 ================================ */
 
 export async function isDiscountSafeToPromote(shop, discountId) {
-  if (!shop || !discountId) return false;
+    if (!shop || !discountId) return false;
 
-  const scopesQuery = `
+    const scopesQuery = `
     query CurrentAppScopes {
       currentAppInstallation {
         accessScopes {
@@ -309,26 +282,26 @@ export async function isDiscountSafeToPromote(shop, discountId) {
     }
   `;
 
-  try {
-    const scopeResponse = await shopifyGraphQL(shop, scopesQuery);
-    const scopes =
-      scopeResponse?.data?.currentAppInstallation?.accessScopes?.map(
-        (scope) => scope.handle
-      ) || [];
+    try {
+        const scopeResponse = await shopifyGraphQL(shop, scopesQuery);
+        const scopes =
+            scopeResponse?.data?.currentAppInstallation?.accessScopes?.map(
+                (scope) => scope.handle
+            ) || [];
 
-    // Existing installations may not have granted the new scope yet.
-    // Preserve current storefront behaviour until reauthorization occurs.
-    if (!scopes.includes("read_rollouts")) {
-      console.warn("read_rollouts scope not granted yet; skipping rollout check", {
-        shop,
-        discountId,
-      });
-      return true;
-    }
+        // Existing installations may not have granted the new scope yet.
+        // Preserve current storefront behaviour until reauthorization occurs.
+        if (!scopes.includes("read_rollouts")) {
+            console.warn("read_rollouts scope not granted yet; skipping rollout check", {
+                shop,
+                discountId,
+            });
+            return true;
+        }
 
-    const changeFilter = `discount_id:'${discountId}'`;
+        const changeFilter = `discount_id:'${discountId}'`;
 
-    const query = `
+        const query = `
       query DiscountRolloutVisibility($id: ID!, $changeFilter: String!) {
         discountNode(id: $id) {
           discount {
@@ -369,63 +342,59 @@ export async function isDiscountSafeToPromote(shop, discountId) {
       }
     `;
 
-    const response = await shopifyGraphQL(shop, query, {
-      id: discountId,
-      changeFilter,
-    });
+        const response = await shopifyGraphQL(shop, query, {
+            id: discountId,
+            changeFilter,
+        });
 
-    const discount = response?.data?.discountNode?.discount;
-    if (!discount) return false;
+        const discount = response?.data?.discountNode?.discount;
+        if (!discount) return false;
 
-    // Shopify is the source of truth for scheduled activation/expiry.
-    // Do not advertise the offer until Shopify reports the discount ACTIVE.
-    if (discount.status !== "ACTIVE") return false;
+        const rollouts = discount?.rollouts;
+        if (!rollouts) return true;
 
-    const rollouts = discount?.rollouts;
-    if (!rollouts) return true;
+        // If Shopify paginates the active rollout list, fail closed rather than
+        // advertising a discount without the full effective-availability picture.
+        if (rollouts.pageInfo?.hasNextPage) return false;
 
-    // If Shopify paginates the active rollout list, fail closed rather than
-    // advertising a discount without the full effective-availability picture.
-    if (rollouts.pageInfo?.hasNextPage) return false;
+        const activeRollouts = rollouts.nodes || [];
+        if (!activeRollouts.length) return true;
 
-    const activeRollouts = rollouts.nodes || [];
-    if (!activeRollouts.length) return true;
+        return activeRollouts.every((rollout) => {
+            if (Number(rollout.effectiveTrafficAllocation) !== 100) {
+                return false;
+            }
 
-    return activeRollouts.every((rollout) => {
-      if (Number(rollout.effectiveTrafficAllocation) !== 100) {
+            const treatments = rollout.treatments || [];
+
+            for (const treatment of treatments) {
+                if (treatment?.changes?.pageInfo?.hasNextPage) {
+                    return false;
+                }
+            }
+
+            // Shopify documents this as the simple safe case for buyer-facing
+            // promotion: 100% effective allocation and one 100%-split treatment
+            // that activates this discount.
+            return treatments.some((treatment) => {
+                if (Number(treatment.split) !== 100) return false;
+
+                return (treatment?.changes?.nodes || []).some(
+                    (change) =>
+                        change?.__typename === "RolloutDiscountActivateChange" &&
+                        change?.discount?.id === discountId
+                );
+            });
+        });
+    } catch (error) {
+        console.error("Failed to determine discount rollout visibility:", {
+            shop,
+            discountId,
+            error: error?.message || error,
+        });
+
+        // Once rollout access is granted, uncertainty must not result in an offer
+        // being advertised to buyers who might not receive it.
         return false;
-      }
-
-      const treatments = rollout.treatments || [];
-
-      for (const treatment of treatments) {
-        if (treatment?.changes?.pageInfo?.hasNextPage) {
-          return false;
-        }
-      }
-
-      // Shopify documents this as the simple safe case for buyer-facing
-      // promotion: 100% effective allocation and one 100%-split treatment
-      // that activates this discount.
-      return treatments.some((treatment) => {
-        if (Number(treatment.split) !== 100) return false;
-
-        return (treatment?.changes?.nodes || []).some(
-          (change) =>
-            change?.__typename === "RolloutDiscountActivateChange" &&
-            change?.discount?.id === discountId
-        );
-      });
-    });
-  } catch (error) {
-    console.error("Failed to determine discount rollout visibility:", {
-      shop,
-      discountId,
-      error: error?.message || error,
-    });
-
-    // Once rollout access is granted, uncertainty must not result in an offer
-    // being advertised to buyers who might not receive it.
-    return false;
-  }
+    }
 }

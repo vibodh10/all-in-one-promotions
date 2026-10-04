@@ -48,31 +48,9 @@ router.get("/offers", async (req, res) => {
   }
 
   try {
-    const [activeOffers, scheduledOffers] = await Promise.all([
-      database.getOffers({
-        shopId: shop,
-        status: "active"
-      }),
-      database.getOffers({
-        shopId: shop,
-        status: "scheduled"
-      })
-    ]);
-
-    const now = new Date();
-
-    const allOffers = [...activeOffers, ...scheduledOffers].filter((offer) => {
-      const start = offer.schedule?.startDate
-        ? new Date(offer.schedule.startDate)
-        : null;
-      const end = offer.schedule?.endDate
-        ? new Date(offer.schedule.endDate)
-        : null;
-
-      if (start && !Number.isNaN(start.getTime()) && now < start) return false;
-      if (end && !Number.isNaN(end.getTime()) && now >= end) return false;
-
-      return true;
+    const allOffers = await database.getOffers({
+      shopId: shop,
+      status: "active"
     });
 
     function sameId(a, b) {
@@ -95,30 +73,30 @@ router.get("/offers", async (req, res) => {
       return o.products?.some(p => sameId(p, productId));
     });
 
-    const rolloutAwareOffers = [];
+      const rolloutAwareOffers = [];
 
-    for (const offer of offers) {
-      const discountIds =
-        offer.shopify_discount_ids ||
-        offer.shopifyDiscountIds ||
-        [];
+      for (const offer of offers) {
+          const discountIds =
+              offer.shopify_discount_ids ||
+              offer.shopifyDiscountIds ||
+              [];
 
-      // Preserve legacy records that do not yet have a Shopify discount ID.
-      if (!Array.isArray(discountIds) || discountIds.length === 0) {
-        rolloutAwareOffers.push(offer);
-        continue;
+          // Preserve legacy records that do not yet have a Shopify discount ID.
+          if (!Array.isArray(discountIds) || discountIds.length === 0) {
+              rolloutAwareOffers.push(offer);
+              continue;
+          }
+
+          const visibilityChecks = await Promise.all(
+              discountIds.map((discountId) =>
+                  isDiscountSafeToPromote(shop, discountId)
+              )
+          );
+
+          if (visibilityChecks.every(Boolean)) {
+              rolloutAwareOffers.push(offer);
+          }
       }
-
-      const visibilityChecks = await Promise.all(
-        discountIds.map((discountId) =>
-          isDiscountSafeToPromote(shop, discountId)
-        )
-      );
-
-      if (visibilityChecks.every(Boolean)) {
-        rolloutAwareOffers.push(offer);
-      }
-    }
 
     const settingsResult = await pool.query(
         `SELECT show_branding, enable_animations
@@ -309,7 +287,7 @@ router.post("/", verifyRequest, async (req, res) => {
     /* ============================================
        🚀 CREATE SHOPIFY DISCOUNT
     ============================================ */
-    if (created.status === "active" || created.status === "scheduled") {
+    if (created.status === "active") {
       const result = await createDiscount({ shop, accessToken }, created);
 
       await database.updateOffer(created.id, {
@@ -318,7 +296,7 @@ router.post("/", verifyRequest, async (req, res) => {
 
       const settings = await getShopSettings(shop);
 
-      if (created.status === "active" && settings?.email_notifications && settings?.contact_email) {
+      if (settings?.email_notifications && settings?.contact_email) {
         const offerName = created.name || "Your offer";
 
         await sendEmail(
@@ -357,7 +335,7 @@ router.put("/:id", verifyRequest, async (req, res) => {
 
     const saved = await database.updateOffer(id, req.body);
 
-    if (saved.status === "active" || saved.status === "scheduled") {
+    if (saved.status === "active") {
       const result = await updateDiscount({ shop, accessToken }, saved);
 
       await database.updateOffer(id, {
@@ -455,34 +433,10 @@ router.patch("/:id/status", verifyRequest, async (req, res) => {
 
     /* ✅ EXISTING LOGIC */
     if (status === "active") {
-      const now = new Date();
-      const scheduledEnd = offer.schedule?.endDate
-        ? new Date(offer.schedule.endDate)
-        : null;
-      const endDate =
-        scheduledEnd &&
-        !Number.isNaN(scheduledEnd.getTime()) &&
-        scheduledEnd > now
-          ? scheduledEnd.toISOString()
-          : null;
-
-      const activatedSchedule = {
-        ...(offer.schedule || {}),
-        startDate: now.toISOString(),
-        endDate,
-      };
-
-      const result = await updateDiscount(
-        { shop, accessToken },
-        {
-          ...offer,
-          schedule: activatedSchedule,
-        }
-      );
+      const result = await createDiscount({ shop, accessToken }, offer);
 
       await database.updateOffer(id, {
         status,
-        schedule: activatedSchedule,
         shopify_discount_ids: result.automaticDiscountIds,
       });
     }
